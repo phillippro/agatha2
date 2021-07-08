@@ -132,10 +132,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
 #                                                      ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify)
                 rv.ls <- BFP(t=tab[,1],y=y,dy=dy,
                             Nma=Nma,Nar=Nar,model.type='man',Indices=NULL,
-                            ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify,
-#renew=TRUE
-renew=FALSE
-                           )
+                            ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify, renew=renew)
 ###renew: every chi-square minimization start from the initial parameter values
 
                 ylab <- 'ln(BF)'
