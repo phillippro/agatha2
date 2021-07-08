@@ -4,7 +4,7 @@
 
 ### Compared with Agatha v1.0 ([Shiny App](https://phillippro.shinyapps.io/Agatha/) or [GitHub source code](https://github.com/phillippro/agatha)), v2.0 provides the following new features:
 
-> 1. The autoregressive noise model can be used to calculate BFP
+> 1. The autoregressive and Gaussian process noise model can be used to calculate BFP
 
 > 2. The Keplerian fit using LM algorithm is able to constrain the circular signal identified through BFP
 
