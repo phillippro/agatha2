@@ -117,4 +117,4 @@ These files provide you plots and relevant data which store the x, y and probabl
 
 >Enable Agatha to analyze multiple data sets
 
->Combine Agatha with MCMC to give parameter uncertainty and posterior
+>Combine Agatha with MCMC to give parameter uncertainty and posterior# agatha2
