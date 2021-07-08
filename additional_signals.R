@@ -12,12 +12,12 @@ for(jj in 2:Nsig.max){
         rr <- rv.ls$res
     }
     if(per.type.seq=='BFP'){
-        rv.ls <- BFP(tab[,1],rr,tab[,3],Nma=Nma,Inds=Inds,Indices=Indices,ofac=ofac,opt.type='sl',model.type='man',fmin=frange[1],fmax=frange[2],quantify=quantify)
+        rv.ls <- BFP(tab[,1],rr,tab[,3],Nma=Nma,Indices=Indices,ofac=ofac,opt.type='sl',model.type='man',fmin=frange[1],fmax=frange[2],quantify=quantify)
         ylab <- 'ln(BF)'
         name <- 'logBF'
     }
     if(per.type.seq=='MLP'){
-        rv.ls <- MLP(tab[,1],rr,tab[,3],Nma=Nma,Inds=Inds,ofac=ofac,mar.type='part',model.type='man',fmin=frange[1],fmax=frange[2],opt.par=NULL,Indices=Indices,MLP.type=MLP.type)
+        rv.ls <- MLP(tab[,1],rr,tab[,3],Nma=Nma,ofac=ofac,mar.type='part',model.type='man',fmin=frange[1],fmax=frange[2],opt.par=NULL,Indices=Indices,MLP.type=MLP.type)
         ylab <- expression('log(ML/'*ML[max]*')')
         name <- 'logML'
     }
