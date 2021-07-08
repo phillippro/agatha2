@@ -34,8 +34,6 @@ RV.model <- function(par,data){
     dy <- data$data[,3]
     Indices <- data$Indices
     Nma <- data$Nm
-####Agathax
-    Nar <- data$Nar
     NI <- data$NI
     if(!any('A'==names(par))){
         A <- B <- phi <- omega <- 0
@@ -1092,16 +1090,14 @@ bfp.inf <- function(vars,Indices,Nmas=NULL,Nars=NULL,NI.inds=NULL){
     Inds.opt <- NI.inds[[1]]
     NI.opt <- length(Inds.opt)
 
-    logLmaxs <- array(data=NA,dim=c(length(NI.inds),length(Nmas),length(Nars)))
-    logBFs <- array(data=NA,dim=c(length(NI.inds),length(Nmas),length(Nars)))
+    logLmaxs <- array(data=NA,dim=c(length(NI.inds),length(Nmas)))
+    logBFs <- array(data=NA,dim=c(length(NI.inds),length(Nmas)))
     lbm <- 0#maximum logBF
     withProgress(message = 'Calculating log(BF) table', value = 0, {
         for(i in 1:length(Nmas)){
             nma <- Nmas[i]
-#            for(ii in 1:length(Nars)){
-#            nar <- Nars[ii]
             for(j in 1:length(NI.inds)){
-                incProgress(1/((length(Nmas)+length(Nars))*length(NI.inds)),detail = paste("MA:", nma,'; Proxies:',paste(NI.inds[[j]],collapse=',')))
+                incProgress(1/(length(Nmas)*length(NI.inds)), detail = paste("MA:", nma,'; Proxies:',paste(NI.inds[[j]],collapse=',')))
                 if(!all(NI.inds[[j]]==0)){
                     ni <- length(NI.inds[[j]])
                     Inds <- NI.inds[[j]]
@@ -1117,13 +1113,8 @@ bfp.inf <- function(vars,Indices,Nmas=NULL,Nars=NULL,NI.inds=NULL){
                 }
                 Ntry <- 10*(round(ni/3)+2*nma)
                 lls <- c()
-                #vars <- global.notation(t,y,dy,Indices=indices,Nma=nma,GP=GP,gp.par=gp.par)
-                vars <- global.notation(t,y,dy,Indices=indices,Nma=nma,Nar=nar,GP=GP,gp.par=gp.par)
-
-
+                vars <- global.notation(t,y,dy,Indices=indices,Nma=nma,GP=GP,gp.par=gp.par)
                 tmp <- sopt(data,Indices=indices,Nma=nma,type='noise',pars=vars)
-                tmp <- sopt(data,Indices=indices,Nma=nma,Nar=nar,type='noise',pars=vars)
-
                 ps.opt <- c(logtau=vars$logtau.ini,m=vars$mini,d=vars$dini,sj=vars$sj.ini)
                 pp <- tmp$par
                 if(i==1 & j==1) pss <- pp
@@ -1133,7 +1124,6 @@ bfp.inf <- function(vars,Indices,Nmas=NULL,Nars=NULL,NI.inds=NULL){
                     for(kk in 1:Ntry){
                         vars$NI <- ni
                         vars$Nma <- nma
-                        vars$Nar <- nar
                         if(nma>0){
                             for(ii in 1:10){
                                 vars$logtau.ini <- rnorm(1,pp$logtau,(vars$logtau.max-vars$logtau.min)/Nsd)#
@@ -1199,7 +1189,6 @@ bfp.inf <- function(vars,Indices,Nmas=NULL,Nars=NULL,NI.inds=NULL){
                 }
             }
         }
-
     })
     cat('The optimal Nma=',Nma.opt,'Inds=',Inds.opt,'\n')
     return(list(Nma=Nma.opt,Inds=Inds.opt,logBFs=logBFs))
@@ -1829,11 +1818,6 @@ BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,ts
         NI <- ncol(Indices)
         Indices <- as.matrix(Indices)
     }
-#cat('NI=',NI,'\n')
-#cat('range(t)=',range(t),'\n')
-#cat('range(y)=',range(y),'\n')
-#cat('range(dy)=',range(dy),'\n')
-#cat('r=',range(dy),'\n')
     data <- cbind(t,y,dy)
     if(is.null(tspan)){
         tspan <- max(t)-min(t)
@@ -2073,9 +2057,10 @@ BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,ts
     inds <- sort(logBF,decreasing=TRUE,index.return=TRUE)$ix
     ps <- P[inds[1:5]]
     power.opt <- logBF[inds[1:5]]
-    return(list(logBF=logBF,lnbfs=lnbfs,P=P,Popt=Popt,logBF.opt=logBF.opt,par.opt=opt.par,res.nst=res.nst,res=res.nst,res.n=res.n,res.s=res.s,res.st=res.st,res.nt=res.nt,sig.level=c(-Nextra/2*log(length(y)),0,log(150)), power=logBF,ps=ps,power.opt=power.opt,ysig=ysig,pars=opt.pars,df=df,ParLow=vars1$par.low,ParUp=vars1$par.up,LogLike0=logL0))}
+    return(list(logBF=logBF,lnbfs=lnbfs,P=P,Popt=Popt,logBF.opt=logBF.opt,par.opt=opt.par,res.nst=res.nst,res=res.nst,res.n=res.n,res.s=res.s,res.st=res.st,res.nt=res.nt,sig.level=c(-Nextra/2*log(length(y)),0,log(150)), power=logBF,ps=ps,power.opt=power.opt,ysig=ysig,pars=opt.pars,df=df,ParLow=vars1$par.low,ParUp=vars1$par.up,LogLike0=logL0))
+}
 
-Lmkepler<- function(ParIni,ParLow,ParUp,df){
+LMkepler <- function(ParIni,ParLow,ParUp,df){
 ####################################################
 ## Using LM algorithm to constrain the Keplerian parameters for a sinusoidal/circular signal found by BFP or GLST or other periodograms
 ## Input:
@@ -2084,7 +2069,7 @@ Lmkepler<- function(ParIni,ParLow,ParUp,df){
 ## Output:
 ##   ParKep - Parameters of a Keplerian signal
 ####################################################
-#SEt the lower and upper boundary
+#Set the lower and upper boundary
     return(ParKep)
 }
 detIni <- function(par,par.low,par.up){

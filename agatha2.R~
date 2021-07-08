@@ -21,25 +21,21 @@ if(length(args)>0){
     PerType <- 'BFP'
     SigType <- 'kepler'
     Nmax <- 2
-    ofac <- 1
+    ofac <- 0.1
     noise <- 'MA'
-#    dir.in <- '../dwarfs/data/combined/HD39060/'
-    dir.in <- '../dwarfs/output/betaPic/'
-#    fs <- 'HD39060_LagNat.dat'
-#    fs <- 'HD39060_LagBin.dat'
-    fs <- 'betaPic_Nw1_N1e+05_logLmax-229.9_Np2_dec_res.dat'
+    dir.in <- 'data/'
+    fs <- c('HD210193_PFS.vels','HD103949_PFS.vels')
 }
 #example: Rscript agatha2.R BFP kepler 2 0.1 MA data HD210193_PFS.vels HD103949_PFS.vels
 if(!grepl('\\/$',dir.in)) dir.in <- paste0(dir.in,'/')
 dir <- 'results/'
 save.data <- TRUE
 targets <- gsub('_.+','',fs)
-stars <- gsub('\\..+','',fs)
 fs <- paste0(dir.in,fs)
 Ncores <- 1
 Nsamp <- 1
 Pmin <- 1.1
-Pmax <- 1e5
+Pmax <- 1e4
 fmin <- 1/Pmax
 fmax <- 1/Pmin
 lnBF <- pars <- Popt <- list()
