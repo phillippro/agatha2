@@ -12,6 +12,8 @@
 
 > 4. Metrix ln(BF) is calculated in GLST to provide better signal detection threshold (i.e. ln(BF)>5)
 
+> 5. add transit periodogram
+
 ## 1. Installation
 
 Install most recent R and R packages from CRAN, for example, [https://cran.r-project.org/bin/macosx/](https://cran.r-project.org/bin/macosx/).
