@@ -7,7 +7,7 @@ library(magicaxis)
 source('periodoframe.R')
 source("periodograms.R")
 source('functions.R',local=TRUE)
-options(shiny.maxRequestSize=30*1024^2) 
+options(shiny.maxRequestSize=30*1024^2)
 Nmax.plots <- 50
 count0 <- 0
 instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
@@ -103,7 +103,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
 
 
 
-    
+
   output$nma <- renderUI({
     if(is.null(Ntarget())) return()
     if(input$per.type=='MLP'){
@@ -132,7 +132,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
 	}
   })
 
-    
+
 
 #  output$nma2 <- renderUI({
 #    if(is.null(Ntarget2())) return()
@@ -308,7 +308,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                 data.path <- input$files[[i,'datapath']]
                 ns <- c(ns,input$files[[i,'name']])
                 tab <- read.table(data.path,nrows=1)
-                if(class(tab[1,1])=='factor'){
+                if(class(tab[1,1])!='numeric'){
                     tab <- read.table(data.path,header=TRUE,check.names=FALSE)
                 }else{
                     tab <- read.table(data.path)
@@ -361,7 +361,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                 f0 <- paste0(dir,target,'.dat')
             }
             tab <- read.table(f0,nrows=1)
-            if(class(tab[1,1])=='factor'){
+            if(class(tab[1,1])!='numeric'){
                 tab <- read.table(f0,header=TRUE,check.names=FALSE)
             }else{
                 tab <- read.table(f0)
@@ -730,7 +730,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                 col.names <- c(col.names,paste0('AR(',out$Nars[j],')'))
             }
         }
-        
+
         row.names <- c()
         for(j in 1:length(out$Inds)){
             if(all(out$Inds[[j]]==0)){
@@ -855,7 +855,7 @@ output$color <- renderUI({
     }
     return(logic)
   })
-    
+
     tspan <- reactive({
         if(is.null(data()) | is.null(input$per.target2)) return()
         ts.min <- ts.max <- c()
@@ -909,7 +909,7 @@ output$color <- renderUI({
       sliderInput('range.zoom','Zoom-in period range', min = pmin, max = pmax,value=c(plow,pup),step=0.1)
   })
 
-###get BFP power spectrum 
+###get BFP power spectrum
   per1D.data <- eventReactive(input$plot1D,{
 ###use calc.1Dper() from functions.R to calculate periodogram
           calc.1Dper(Nmax.plots, periodogram.var(),per.par(),data())

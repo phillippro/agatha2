@@ -1,81 +1,120 @@
-# Agatha
-## Disentangling periodic signals from correlated noise in a periodogram framework
+# Agatha v2.0
 
-### online web app 
+## Advanced version of Agatha software for periodic signal diagnostics
 
-The shiny app of Agatha is available [here](https://phillippro.shinyapps.io/Agatha/) or [here](http://www.agatha.herts.ac.uk).
-If you use Agatha in your work, please cite **"Feng F., Tuomi M., Jones H. R. A., 2017, Agatha: disentangle periodic signals from correlated noise in a periodogram framework, MNRAS, 470, 4794"** or use the following bibtex.
+### Compared with Agatha v1.0 ([Shiny App](https://phillippro.shinyapps.io/Agatha/) or [GitHub source code](https://github.com/phillippro/agatha)), v2.0 provides the following new features:
+
+> 1. The autoregressive noise model can be used to calculate BFP
+
+> 2. The Keplerian fit using LM algorithm is able to constrain the circular signal identified through BFP
+
+> 3. The phase curve for Keplerian fit and residuals visualize the fit
+
+> 4. Metrix ln(BF) is calculated in GLST to provide better signal detection threshold (i.e. ln(BF)>5)
+
+## 1. Installation
+
+Install most recent R and R packages from CRAN, for example, [https://cran.r-project.org/bin/macosx/](https://cran.r-project.org/bin/macosx/).
+
+Then install R packages using
+
+`install.packages(c('minpack.lm','magicaxis','foreach','doMC','parallel'))`
+
+## 2. Usage
+
+After downloading the source code and entering the `agatha2/` directory, you can run the following commandline in your terminal,
+
+`Rscript agatha2.R BFP kepler 2 0.1 MA data HD210193_PFS.vels HD103949_PFS.vels`
+
+>The first argument `BFP` specifies the type of periodograms used, it could be BFP or GLST and more types will be implemented soon. Note that the GLST is the most efficient periodogram but it does not account for white noise jitter nor red noise. BFP is typically recommended because it models white jitter, red nosie as well as a floating linear trend. In principle it could include a linear function of noise proxies as done in Agatha v1.0. However, this linear function may also introduce spurious signals due to nonlinear correlation between RVs and noise proxies. So the overlap between RV and activity signals might be a better way to diagnose RV signals. 
+
+>The second argument `kepler` is the type of signal to be constrained. There are two options, `kepler` or `circular`. 
+
+>The third argument `2` is the number of signals you want to find.
+
+>The fourth argument `0.1` is the oversampling parameter (ofac), ofac>1 is recommended although lower sampling rate is efficient for test.
+
+>The fifth argument `MA` specifies the noise model used to calculate BFPs. There are three options in this version, `white`, `MA` and `AR`. The Gaussian process version would be tested soon although GP is found to remove red noise as well as signals (Feng et al. 2016 and Ribas et al. 2018). 
+
+>The sixth argument `data` is the relative path where the data files are put. If the directory is where the agatha2.R file is located, use `.` instead.
+
+>The last arguments provide the data files to be analyzed. Agatha 2.0 only support analysis of one set per target and thus multiple data files would be treated independently. 
+
+By running the above commandline, the output would be
+
 ```
-@ARTICLE{2017MNRAS.470.4794F,
-   author = {{Feng}, F. and {Tuomi}, M. and {Jones}, H.~R.~A.},
-    title = "{Agatha: disentangling periodic signals from correlated noise in a periodogram framework}",
-  journal = {\mnras},
-archivePrefix = "arXiv",
-   eprint = {1705.03089},
- primaryClass = "astro-ph.EP",
- keywords = {methods: data analysis, methods: statistical, techniques: radial velocities, stars: individual: HD 177565, HD 41248, CoRoT-7},
-     year = 2017,
-    month = oct,
-   volume = 470,
-    pages = {4794-4814},
-      doi = {10.1093/mnras/stx1126},
-   adsurl = {http://adsabs.harvard.edu/abs/2017MNRAS.470.4794F},
-  adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-}
+target: HD210193 
+
+ results/HD210193_BFP_MA_periodogram_sig1.pdf 
+results/HD210193_BFP_MA_periodogram_sig1.txt 
+
+ results/HD210193_BFP_MA_phase_sig1.pdf 
+results/HD210193_BFP_MA_phase_sig1_OptPar.txt 
+results/HD210193_BFP_MA_phase_sig1_DataPhase.txt 
+results/HD210193_BFP_MA_phase_sig1_SimPhase.txt 
+results/HD210193_BFP_MA_phase_sig1_RawRes.txt 
+results/HD210193_BFP_MA_phase_sig1_bin.txt 
+
+ results/HD210193_BFP_MA_periodogram_sig2.pdf 
+results/HD210193_BFP_MA_periodogram_sig2.txt 
+
+ results/HD210193_BFP_MA_phase_sig2.pdf 
+results/HD210193_BFP_MA_phase_sig2_OptPar.txt 
+results/HD210193_BFP_MA_phase_sig2_DataPhase.txt 
+results/HD210193_BFP_MA_phase_sig2_SimPhase.txt 
+results/HD210193_BFP_MA_phase_sig2_RawRes.txt 
+results/HD210193_BFP_MA_phase_sig2_bin.txt 
+
+ results/HD210193_BFP_fit_allsig.pdf 
+results/HD210193_BFP_fit_allsig_data.txt 
+results/HD210193_BFP_fit_allsig_fit.txt 
+results/HD210193_BFP_fit_allsig_RawRes.txt 
+results/HD210193_BFP_fit_allsig_BinRes.txt 
+
+ results/HD210193_BFP_MA_periodogram_res.pdf 
+results/HD210193_BFP_MA_periodogram_res.txt 
+
+ results/HD210193_BFP_MA_periodogram_Sindex.pdf 
+results/HD210193_BFP_MA_periodogram_Sindex.txt 
+
+ results/HD210193_BFP_MA_periodogram_Halpha.pdf 
+results/HD210193_BFP_MA_periodogram_Halpha.txt 
+
+ results/HD210193_BFP_MA_periodogram_PhotonCount.pdf 
+results/HD210193_BFP_MA_periodogram_PhotonCount.txt 
+
+ results/HD210193_BFP_MA_periodogram_ObsTime.pdf 
+results/HD210193_BFP_MA_periodogram_ObsTime.txt 
+
+ results/HD210193_BFP_MA_periodogram_window.pdf 
+results/HD210193_BFP_MA_periodogram_window.txt 
+
+target: HD103949 
+...
 ```
 
-### use the app locally
-If you want to use the app locally, you download the whole GitHub repository to a local directory. Then you should install R and R packages. The user should install packages 'shiny', 'magicaxis', 'minpack.lm' and 'fields'. For example,
-```
-install.packages(c('shiny','magicaxis','minpack.lm','fields'))
-```
-. To run the app locally, the user should go to the directory where the ui.R and server.R files are, and type "R" to enter the R console, and then run the app 
-using the following commands:
-```
-library(shiny)
-runApp()
-```
-Then the app will appear in your browser for your usage.  
+These files provide you plots and relevant data which store the x, y and probably ey values for each plot. The meaning of file names are as follows:
 
-### Details about periodoframe.R
+>results/HD210193_BFP_MA_periodogram_sig1 - plot and data for periodogram calculated using BFP+MA(1) for the first signal
 
-The functions used to calculate the BFP and MLP are put in the periodoframe.R file. The user can use/adapt these functions for different applications. 
-For example, the BFP can be made using the following function:
-```
-BFP(t,y,dy,Nma=Nma,Indices=Indices,ofac=ofac,opt.type=opt.type,model.type=model.type,fmax=fmax)
-```
-where t, y and dy are the times, y values and the corresponding errors. Nma is the number of moving average components. Indices are a matrix of 
-noise proxies. Inds is a vector of column numbers of indices (or noise proxies) in the "Indices" matrix. 
-For example, "Inds=1:4" means linearly including the proxies from column 1 to column 4 of "Indices" in the noise model.
-"ofac" is the over sampling factor, and opt.type can be "nl" or "sl", and is the method used to optimize parameters.
-"sl" is suggested because it is more efficient and is as reliable as "nl". "model.type" is a parameter to specify whether to compare models. If model.type='auto', model comparison is done using the BFP to select the optimal noise model. If model.type='man', BFP will use Nma and Inds manually provided by the user. "fmax" is the maximum frequency for frequency sampling.
+>results/HD210193_BFP_MA_periodogram_sig2 - plot and data for periodogram for the second signal
 
-The main output of the BFP function is the logarithmic Bayes factor (logBF) for a sample of periods (P). Then the user can make a simple BFP using 
-```
-plot(BFP$P,BFP$logBF,log='x',type='l')
-```
-. The functions for calculating the marginalized likelihood periodogram (MLP) and moving periodogram (MP) are also in periodoframe.R. 
-The functions used to calculate the Lomb-Scargle (LS), generalized LS (GLS), Bayesian GLS (BGLS), 
-GLS with floating trend (GLST) periodograms are put into periodogrames.R. 
+>results/HD210193_BFP_MA_phase_sig1 - phase plot and data for the first signal
 
-### data
+>results/HD210193_BFP_MA_phase_sig2 - phase plot and data for the second signal
 
-The test data is put in the "data/" directory. And the results are put in the "results/" directory. In the "data/" directory, "...calibration.dat" files are calibration data, "..._TERRA_HARPS.dat" are TERRA-reduced HARPS data including JD-2400000, RV, eRV, BIS, FWHM and S-index from left to right columns. "..._TERRA_XAP_dRVs.dat" are differential RVs derived from XAP aperture data sets. In each file, the first column is the time, and the other columns are XAPj-i where j={2,3,...,X} and i=j-1.  
+>results/HD210193_BFP_MA_phase_allsig - phase plot and data for all signals
 
-### example code
+>results/HD210193_BFP_MA_periodogram_res - residual periodogram
 
-The "make_periodoframe.R" file is an example code used to compare different periodograms. The "MP.R" file is to calculate the moving periodogram. Both files call "prepare_data.R" which is to set parameters and to load the data. The user is refered to the upcoming paper titled "Agatha: Disentangling periodic singals from correlated noise in a periodogram framework" for more details.  
+>results/HD210193_BFP_MA_periodogram_xxx - periodograms for columns 4,5,... in the data file. These columns store activity indices in the case of RV set. 
 
-To quickly produce a periodogram, you just start R console by typing "R", and then run the following command in the R console:
-```
-source('make_periodogram.R')
-```
-or run the following command in the terminal directly: 
-```
-Rscript make_periodogram.R
-```
-If the user wants to change the parameters of periodograms, he/she can change them in the file "prepare_data.R", and then run make_periodogram.R again. 
+## 3. Future developement
 
-The usage of MP.R is similar to make_periodogram.R. 
+>Develop a R markdown code to visualize the results
 
-Comments and questions are welcome and can be sent to fengfabo@gmail.com .
+>Develope a Shiny app for graphic application of Agatha 2.0
+
+>Enable Agatha to analyze multiple data sets
+
+>Combine Agatha with MCMC to give parameter uncertainty and posterior

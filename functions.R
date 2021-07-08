@@ -132,10 +132,12 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
 #                                                      ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify)
                 rv.ls <- BFP(t=tab[,1],y=y,dy=dy,
                             Nma=Nma,Nar=Nar,model.type='man',Indices=NULL,
-                            ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify,renew=TRUE
+                            ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify,
+#renew=TRUE
+renew=FALSE
                            )
-###renew: every chi-square minimization start from the initial parameter values 
- 
+###renew: every chi-square minimization start from the initial parameter values
+
                 ylab <- 'ln(BF)'
                 name <- 'logBF'
             }else if(per.type=='MLP'){
@@ -164,7 +166,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
             }
 #            f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',per.type,'_MA',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
             f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',per.type,'_AR',paste(Nars,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
-            
+
         }else{
             rv.ls <- lsp(times=tab[,1]-min(tab[,1]),x=rep(1,nrow(tab)),ofac=ofac,from=frange[1],to=frange[2],alpha=c(0.1,0.01,0.001))
             tit <- paste0('LS;',instrument,';',ypar)
@@ -179,8 +181,8 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
             if(!exists('Inds')){
                 Inds <- 0
             }
-#           f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',pt,'_MA',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')            
-            f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',pt,'_AR',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')            
+#           f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',pt,'_MA',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
+            f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',pt,'_AR',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
 
             ylab <- 'Power'
                 name <- 'power'
