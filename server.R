@@ -9,7 +9,6 @@ source("periodograms.R")
 source('functions.R',local=TRUE)
 options(shiny.maxRequestSize=30*1024^2)
 Nmax.plots <- 50
-renew <- FALSE
 count0 <- 0
 instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
 tol <- 1e-16
