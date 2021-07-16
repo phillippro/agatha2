@@ -6,7 +6,7 @@ shinyUI(fluidPage(
     h4(HTML("<em>Disentangling periodic signals from correlated noise in a periodogram framework</em>")),
     tabsetPanel(
         tabPanel("About Agatha",uiOutput('about')
-                 ),               
+                 ),
         tabPanel("Choose File",
                  sidebarLayout(
                      sidebarPanel(
@@ -50,8 +50,8 @@ shinyUI(fluidPage(
                      sidebarPanel(
 ######noise model comparison
                          uiOutput('comp.target'),
-                         sliderInput("Nma.max",'Maximum number of MA components',min=0,max=10,value=1,step=1), 
-#                         sliderInput("Nar.max",'Maximum number of AR components',min=0,max=10,value=1,step=1), 
+                         sliderInput("Nar.max",'Maximum number of AR components',min=0,max=10,value=1,step=1),
+                         sliderInput("Nma.max",'Maximum number of MA components',min=0,max=10,value=1,step=1),
                          uiOutput('proxy.type'),
                          uiOutput('proxy.text'),
                          uiOutput('nI.basic'),
@@ -64,7 +64,7 @@ shinyUI(fluidPage(
                                         # uiOutput('mlp'),
                          actionButton('compare', 'compare noise models')
                      ,width = 6),
-                     mainPanel(                         
+                     mainPanel(
                          tags$style(type="text/css", "#file_progress { max-width: 200px; }"),
                          uiOutput('BFtab'),
                          uiOutput('optNoise'),
@@ -124,13 +124,13 @@ shinyUI(fluidPage(
                          uiOutput('nma2'),
                          uiOutput('Inds2'),
                          sliderInput("ofac2", "Oversampling factor", min = 0, max = 20, value=1,step=0.2),
-#                         selectInput("yvar", "Choose observables", 
+#                         selectInput("yvar", "Choose observables",
 #                                     choices  = 'RVs',
-#                                     selected = 'RVs',multiple=FALSE),    
+#                                     selected = 'RVs',multiple=FALSE),
                          uiOutput('var2'),
-#                         helpText("'all': the periodograms of all variables; 
-#                             'RVs': periodograms of RVs; 
-#                            'Indices': periodograms of Indices; 
+#                         helpText("'all': the periodograms of all variables;
+#                             'RVs': periodograms of RVs;
+#                            'Indices': periodograms of Indices;
 #                             'Instrument:Variable': individual variables"),
                                         #uiOutput('helpvar'),
                                        #uiOutput('tv'),

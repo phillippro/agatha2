@@ -1,6 +1,6 @@
 library(shiny)
 library(magicaxis)
-#library(lomb)
+library(ramify)
 #library(ggplot2)
 # use the below options code if you wish to increase the file input limit, in this example file input limit is increased from 5MB to 9MB
 # options(shiny.maxRequestSize = 9*1024^2)
@@ -712,25 +712,10 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
         out <- calcBF(data=tab,Nbasic=Nbasic,
                       proxy.type=proxy.type,
                       Nma.max=as.integer(input$Nma.max),
-		      #Nar.max=as.integer(input$Nar.max),
+		      Nar.max=as.integer(input$Nar.max),
                       groups=groups,Nproxy=ni)
-        col.names <- c()
-        for(j in 1:length(out$Nmas)){
-            if(out$Nmas[j]==0){
-                col.names <- c(col.names,'white noise')
-            }else{
-                col.names <- c(col.names,paste0('MA(',out$Nmas[j],')'))
-            }
-        }
-###AR model
-        for(j in 1:length(out$Nars)){
-            if(out$Nars[j]==0){
-                col.names <- c(col.names,'white noise')
-            }else{
-                col.names <- c(col.names,paste0('AR(',out$Nars[j],')'))
-            }
-        }
 
+        logBF <- out$lnBF
         row.names <- c()
         for(j in 1:length(out$Inds)){
             if(all(out$Inds[[j]]==0)){
@@ -739,19 +724,16 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                 row.names <- c(row.names,paste0('proxies: ',paste(out$Inds[[j]],collapse=',')))
             }
         }
-        logBF <- data.frame(round(out$logBF,digit=1))
-        colnames(logBF) <- col.names
         rownames(logBF) <- row.names
-#        cat('colnames(logBF)=',colnames(logBF),'\n')
-#        cat('rownames(logBF)=',rownames(logBF),'\n')
+
         logBF.download <- logBF
-        colnames(logBF.download) <- paste0('MA',out$Nmas)
-#        colnames(logBF.download) <- paste0('AR',out$Nars)
+#        colnames(logBF.download) <- paste0('MA',out$Nmas)
+
         rnames <- c()
         for(j in 1:nrow(logBF)){
             rnames <- c(rnames,paste0('proxy',paste(out$Inds[[j]],collapse='-')))
         }
-        rownames(logBF.download) <- NULL#rnames
+#        rownames(logBF.download) <- NULL#rnames
         return(list(logBF=logBF,out=out,logBF.download=logBF.download))
     })
 
@@ -768,10 +750,12 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
       filename = function(){
           f1 <- gsub(" ",'_',Sys.time())
           f2 <- gsub(":",'-',f1)
-          paste('logBF_',input$comp.target,'_', f2, '.txt', sep='')
+#          paste('logBF_',input$comp.target,'_', f2, '.txt', sep='')
+          paste('logBF_',input$comp.target,'_', f2, '.csv', sep='')
       },
       content = function(file) {
-          write.table(round(model.selection()$logBF.download,digit=1), file,quote=FALSE,row.names=FALSE)
+#          write.table(round(model.selection()$logBF.download,digit=1), file,quote=FALSE,row.names=FALSE)
+          write.table(round(model.selection()$logBF.download,digit=1), file,quote=FALSE,sep='|')
       }
   )
 
@@ -788,13 +772,13 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
               Nma.opt <- model.selection()$out$Nma.opt
               Nar.opt <- model.selection()$out$Nar.opt
               Inds.opt <- model.selection()$out$Inds.opt
-#              if(Nma.opt==0){
-              if(Nar.opt==0){
+#              Inds.opt <- model.selection()$out$NI.opt
+              if(Nma.opt==0 & Nar.opt==0){
                   t1 <- 'white noise'
               }else{
 #                  t1 <- paste0('MA(',Nma.opt,')')
-                  t1 <- paste0('AR(',Nar.opt,')')
-}
+                  t1 <- paste0('ARMA(',Nar.opt,',',Nma.opt,')')
+              }
               if(all(Inds.opt==0)){
                   t2 <- 'Optimal proxies: no proxy'
               }else{

@@ -383,7 +383,7 @@ plotMP <- function(vals,pars){
     source('MP_plot.R',local=TRUE)
 }
 
-calcBF <- function(data,Nbasic,proxy.type,Nma.max,groups=NULL,Nproxy=NULL,Npoly=c(2,0)){
+calcBF <- function(data,Nbasic,proxy.type,Nma.max,Nar.max,groups=NULL,Nproxy=NULL,Npoly=c(2,0),progress=FALSE){
 ##add Nar.max
     t <- data[,1]
     y <- data[,2]
@@ -425,6 +425,7 @@ calcBF <- function(data,Nbasic,proxy.type,Nma.max,groups=NULL,Nproxy=NULL,Npoly=
                     NI.inds[[j+1]] <- inds[1:j]
                 }
             }
+#            cat('NI.inds=',unlist(NI.inds),'\n')
         }else if(proxy.type=='group' & Nvary>0){
             NI.inds <- lapply(1:(length(groups)+1),function(i) NI.inds[[i]] <- list())
             if(Nbasic>0){
@@ -451,14 +452,42 @@ calcBF <- function(data,Nbasic,proxy.type,Nma.max,groups=NULL,Nproxy=NULL,Npoly=
         }
     }
     if(ncol(data)>3){
-        out <- BFP.comp(t, y, dy, Nmas=0:Nma.max,NI.inds=NI.inds,Indices=data[,4:ncol(data),drop=FALSE])
+        out <- BFP.comp(data, Nmas=0:Nma.max,Nars=0:Nar.max,NI.inds=NI.inds,progress=progress)
     }else{
-        out <- BFP.comp(t, y, dy, Nmas=0:Nma.max,NI.inds=0,Indices=NA)
+        out <- BFP.comp(data, Nmas=0:Nma.max,Nars=0:Nar.max,NI.inds=0,progress=progress)
     }
-    if(!is.matrix(out$logBF)){
-        out$logBF <- matrix(out$logBF,ncol=1)
+#    out$logBF
+#    if(!is.matrix(out$logBFs)){
+    lnBFs <- flatten2d(out$lnBF)
+#    }
+    return(list(Inds=NI.inds,Inds.opt=out$NI.opt,Nars=0:Nar.max,Nmas=0:Nma.max,Nma.opt=out$Nma.opt,Nar.opt=out$Nar.opt,lnBF=lnBFs,extra=out))
+#    return(out)
+}
+
+flatten3d <- function(arr){
+    dn <- dimnames(arr)
+    coln <- gsub('\\d','',c(dn[[1]][1],dn[[2]][1],dn[[3]][1]))
+    nn <- outer(outer(gsub('[a-z]|[A-Z]','',dn[[1]]),gsub('[a-z]|[A-Z]','',dn[[2]]),paste),gsub('[a-z]|[A-Z]','',dn[[3]]),paste)
+    ns <- t(sapply(1:length(nn),function(i) unlist(strsplit(nn[i],' '))))
+    tmp <- data.frame(cbind(ns,flatten(arr)))
+    colnames(tmp) <- c(coln,'val')
+#    tmp[,1:3] <- gsub('[a-z]|[A-Z]','',tmp[,1:3])
+    tmp
+}
+
+flatten2d <- function(arr){
+    Ncol <- dim(arr)[2]*dim(arr)[3]
+    Nrow <- dim(arr)[1]
+    dn <- dimnames(arr)
+    cn  <- paste0('ARMA(',gsub(' ',',',outer(gsub('[a-z]|[A-Z]','',dn[[3]]),gsub('[a-z]|[A-Z]','',dn[[2]]),paste)),')')
+    out <- array(NA,dim=c(Nrow,Ncol))
+    colnames(out) <- cn
+    rownames(out) <- unlist(dimnames(arr)[1])
+    j <- 1
+    for(i in 1:Nrow){
+        out[i,] <- flatten(arr[i,,])
     }
-    return(list(Inds=NI.inds,Inds.opt=out$Inds,Nmas=0:Nma.max,Nma.opt=out$Nma,logBF=out$logBF,NI.opt=out$NI))
+    out
 }
 
 MCMC.panel <- function(){
