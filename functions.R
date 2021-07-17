@@ -131,7 +131,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
 #                tmp <- c(Nma=Nma,Nar=Nar,model.type='man',Indices=NULL,
 #                                                      ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify)
                 rv.ls <- BFP(t=tab[,1],y=y,dy=dy,
-                            Nma=Nma,Nar=Nar,model.type='man',Indices=NULL,
+                            Nma=Nma,Nar=Nar,model.type='man',Indices=Indices,
                             ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify, renew=renew)
 ###renew: every chi-square minimization start from the initial parameter values
 
@@ -451,10 +451,14 @@ calcBF <- function(data,Nbasic,proxy.type,Nma.max,Nar.max,groups=NULL,Nproxy=NUL
             NI.inds <- list(list(Nbasic:NI.max))
         }
     }
+    Nmas <- 0:Nma.max
+    Nars <- 0:Nar.max
     if(ncol(data)>3){
-        out <- BFP.comp(data, Nmas=0:Nma.max,Nars=0:Nar.max,NI.inds=NI.inds,progress=progress)
+#        out <- BFP.comp(data, Nmas=0:Nma.max,Nars=0:Nar.max,NI.inds=NI.inds,progress=progress)
+        out <- bfp.inf.progress(data,Nmas=Nmas,Nars=Nars,NI.inds=NI.inds)
     }else{
-        out <- BFP.comp(data, Nmas=0:Nma.max,Nars=0:Nar.max,NI.inds=0,progress=progress)
+        out <- bfp.inf.progress(data,Nmas=Nmas,Nars=Nars,NI.inds=0)
+#        out <- BFP.comp(data, Nmas=0:Nma.max,Nars=0:Nar.max,NI.inds=0,progress=progress)
     }
 #    out$logBF
 #    if(!is.matrix(out$logBFs)){

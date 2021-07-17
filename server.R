@@ -9,6 +9,7 @@ source("periodograms.R")
 source('functions.R',local=TRUE)
 options(shiny.maxRequestSize=30*1024^2)
 Nmax.plots <- 50
+renew <- FALSE
 count0 <- 0
 instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
 tol <- 1e-16
@@ -101,7 +102,19 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
     })
 
 
-
+    output$nar <- renderUI({
+    if(is.null(Ntarget())) return()
+    if(input$per.type=='MLP'){
+        lapply(1:Ntarget(), function(i){
+            selectizeInput(paste0("Nar",i),paste('Number of AR components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
+	)
+        }
+      if(input$per.type=='BFP'){
+          lapply(1:Ntarget(), function(i){
+              selectizeInput(paste0("Nar",i),paste('Number of AR components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
+        )
+	}
+  })
 
 
   output$nma <- renderUI({
@@ -114,20 +127,6 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
       if(input$per.type=='BFP'){
           lapply(1:Ntarget(), function(i){
               selectizeInput(paste0("Nma",i),paste('Number of MA components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
-        )
-	}
-  })
-
-    output$nar <- renderUI({
-    if(is.null(Ntarget())) return()
-    if(input$per.type=='MLP'){
-        lapply(1:Ntarget(), function(i){
-            selectizeInput(paste0("Nar",i),paste('Number of AR components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
-	)
-        }
-      if(input$per.type=='BFP'){
-          lapply(1:Ntarget(), function(i){
-              selectizeInput(paste0("Nar",i),paste('Number of AR components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
         )
 	}
   })
@@ -713,7 +712,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                       proxy.type=proxy.type,
                       Nma.max=as.integer(input$Nma.max),
 		      Nar.max=as.integer(input$Nar.max),
-                      groups=groups,Nproxy=ni)
+                      groups=groups,Nproxy=ni,progress=TRUE)
 
         logBF <- out$lnBF
         row.names <- c()

@@ -15,4 +15,3 @@ out <- calcBF(data=tab,Nbasic=0,
               Nma.max=1,Nar.max=1,
               Nproxy=3,progress=FALSE)
 
-
