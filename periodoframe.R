@@ -413,16 +413,13 @@ rv.white <- function(par,df){
             }
             vec.rh <- c(Y,YT,YI)
             white.par <- solve.try(lin.mat,vec.rh)
-    cat('2white.par=',white.par,'\n')
             indd <- (length(white.par)-NI+1):length(white.par)
         }else{
             dI <- 0
             d <- 0
-#            cat('ok3\n')
             lin.mat <- matrix(c(1,T,T,TT),byrow=TRUE,ncol=2)
             vec.rh <- c(Y,YT)
             white.par <- solve.try(lin.mat,vec.rh)
-    cat('3white.par=',white.par,'\n')
 
         }
 ###optimized parameterse for the trend model
@@ -1061,7 +1058,7 @@ MLP <- function(t, y, dy, Nma=0, Nar=0,mar.type='part',sj=0,logtau=NULL,ofac=1,f
     inds <- sort(logBF,decreasing=TRUE,index.return=TRUE)$ix
     ps <- P[inds[1:5]]
     power.opt <- logBF[inds[1:5]]
-    return(list(P=unit/f, logp=power, ps=ps,power.opt=power.opt,logBF.opt=logBF[ind],logBF=logBF,power=logBF,logBF.noise=logBF.noise,Nma=Nma,Nar=Nar,NI=NI,par=opt.par,res=tmp$res,sig.level=log(c(10,100,1000))))
+    return(list(data=data,P=unit/f, logp=power, ps=ps,power.opt=power.opt,logBF.opt=logBF[ind],logBF=logBF,power=logBF,logBF.noise=logBF.noise,Nma=Nma,Nar=Nar,NI=NI,par=opt.par,res=tmp$res,sig.level=log(c(10,100,1000))))
 }
 
 #####BFP-based model inference/selection
@@ -1192,201 +1189,6 @@ bfp.inf <- function(vars,Indices,Nmas=NULL,Nars=NULL,NI.inds=NULL){
     })
     cat('The optimal Nma=',Nma.opt,'Inds=',Inds.opt,'\n')
     return(list(Nma=Nma.opt,Inds=Inds.opt,logBFs=logBFs))
-}
-
-bfp.inf.progress <- function(data,Nmas=NULL,Nars=NULL,NI.inds=0,Nrep=5,GP=FALSE){
-    Ndata <- nrow(data)
-    data[,1] <- data[,1]-min(data[,1])
-    t <- data[,1]
-    y <- data[,2]
-    dy <- data[,3]
-    Indices <- NULL
-    if(ncol(data)>3){
-        Indices <- as.matrix(data[,4:ncol(data),drop=FALSE])
-    }
-    if(is.null(Nmas)){
-        Nmas <- 0:2
-    }
-    if(is.null(Nars)){
-        Nars <- 0:2
-    }
-    nis <- c()
-    for(j in 1:length(NI.inds)){
-            ni.ind <- NI.inds[[j]]
-            nis <- c(nis,length(ni.ind[ni.ind!=0]))
-    }
-    Ndata <- nrow(data)
-    logLmaxs <- Npars <- logBFs <- array(data=NA,dim=c(length(NI.inds),length(Nmas),length(Nars)),dimnames=list(paste0('NI',nis),paste0('Nma',Nmas),paste0('Nar',Nars)))
-    ind.opt <- 1
-    withProgress(message = 'Compare noise models', value = 0, {
-    for(i in 1:length(Nars)){
-        for(k in 1:length(Nmas)){
-            for(j in 1:length(NI.inds)){
-                if(!all(NI.inds[[j]]==0)){
-                    ni <- length(NI.inds[[j]][NI.inds[[j]]!=0])
-                    Inds <- NI.inds[[j]]
-                    indices <- Indices[,Inds,drop=FALSE]
-                }else{
-                    ni <- 0
-                    indices <- NULL
-                    Inds <- 0
-                }
-                incProgress(1/(length(Nmas)*length(Nars)*length(NI.inds)), detail = paste0("ARMA(", Nars[i],',',Nmas[k],')+Proxies',paste(NI.inds[[j]],collapse=',')))
- #               cat('dim(indices)=',dim(indices),'\n')
-                vars <- global.notation(t,y,dy,Indices=indices,Nma=Nmas[k],Nar=0,GP=FALSE,gp.par=rep(NA,3))
-                tmp <- sopt(omega=NA,phi=NA,Nma=Nmas[k],Nar=0,Indices=indices,data=data,type='noise',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=FALSE,gp.par=vars$gp.par,Nrep=Nrep)
-                Npar.ma <- Nmas[k]+1
-                if(Nmas[k]==0){
-                    Npar.ma <- 0
-                }
-                Npar.ar <- Nars[i]+1
-                if(Nars[i]==0){
-                    Npar.ar <- 0
-                }
-                Npar <- ni+Npar.ma+Npar.ar
-                logLmaxs[j,k,i] <- tmp$logL
-                logBFs[j,k,i] <- tmp$logL-logLmaxs[1,1,1]-0.5*Npar*log(Ndata)
-                Npars[j,k,i] <- Npar
-            }
-        }
-    }
-    })
-###
-    ind.opt <- c(1,1,1)
-    for(i in 1:length(Nars)){
-        for(k in 1:length(Nmas)){
-            for(j in 1:length(NI.inds)){
-#                lnBF <- logLmaxs-logLmaxs[j,k,i]-0.5*(Npars-Npars[j,k,i])*log(Ndata)
-#                cat('i=',i,';k=',k,';j=',j,'lnBF',lnBF,'\n')
-                if(!any((Npars>Npars[j,k,i]) & (logBFs-logBFs[j,k,i])>=5) & (logBFs[j,k,i]-logBFs[ind.opt[1],ind.opt[2],ind.opt[3]])>=5){
-                    ind.opt <- c(j,k,i)
-                }
-            }
-        }
-    }
-    Nma.opt=Nmas[ind.opt[2]]
-    Nar.opt=Nars[ind.opt[3]]
-    NI.opt=NI.inds[[ind.opt[1]]]
-    NI.opt <- length(which(NI.opt!=0))
-    if(length(length(NI.opt)>0)){
-        proxy.opt <- Indices[,NI.opt,drop=FALSE]
-    }else{
-        proxy.opt <- NULL
-    }
-#    ind <- which(logBFs>5,arr.ind=TRUE)
-#    print(logBFs)
-    return(list(lnLmax=logLmaxs,lnBF=logBFs,Npars=Npars,Npar.opt=Npars[ind.opt[1],ind.opt[2],ind.opt[3]],ind.opt=ind.opt,NI.opt=NI.opt,Nma.opt=Nma.opt,Nar.opt=Nar.opt,nqp=c(NI.opt=NI.opt,Nma.opt=Nma.opt,Nar.opt=Nar.opt),proxy.opt=proxy.opt))
-}
-
-### noise model comparison without progress bar
-bfp.inf.norm <- function(data,Nmas=NULL,Nars=NULL,NI.inds=NULL,Nrep=5,GP=FALSE){
-##If comprehensive, then the proxies should be compared in combination with ARMA model; otherwise, proxies will be compared independently.
-#    cat('dim(data)=',dim(data),'\n')
-    Ndata <- nrow(data)
-    data[,1] <- data[,1]-min(data[,1])
-    t <- data[,1]
-    y <- data[,2]
-    dy <- data[,3]
-    Indices <- NULL
-    if(ncol(data)>3){
-        Indices <- as.matrix(data[,4:ncol(data),drop=FALSE])
-    }
-    if(is.null(Nmas)){
-        Nmas <- 0:2
-    }
-    if(is.null(Nars)){
-        Nars <- 0:2
-    }
-    if(is.null(NI.inds)){
-        NI.inds <- list(0,1:3,1:5,c(1:3,6:10),c(1:3,11:18))
-    }
-    nis <- c()
-    for(j in 1:length(NI.inds)){
-            ni.ind <- NI.inds[[j]]
-            nis <- c(nis,length(ni.ind[ni.ind!=0]))
-    }
-    ni.min <- min(nis)
-    Nma.opt <- Nmas[1]
-    Nar.opt <- Nars[1]
-    Inds.opt <- NI.inds[[1]]
-    NI.opt <- length(Inds.opt)
-    Ndata <- nrow(data)
-    logLmaxs <- array(data=NA,dim=c(length(NI.inds),length(Nmas),length(Nars)),dimnames=list(paste0('NI',nis),paste0('Nma',Nmas),paste0('Nar',Nars)))
-    logBFs <- array(data=NA,dim=c(length(NI.inds),length(Nmas),length(Nars)),dimnames=list(paste0('NI',nis),paste0('Nma',Nmas),paste0('Nar',Nars)))
-    ind.opt <- 1
-    for(j in 1:length(NI.inds)){
-        if(!all(NI.inds[[j]]==0)){
-            ni <- nis[j]
-            Inds <- NI.inds[[j]]
-            indices <- Indices[,Inds,drop=FALSE]
-        }else{
-            ni <- 0
-            indices <- NULL
-            Inds <- 0
-        }
-        if(j==1){
-            Inds.opt <- Inds
-            indices.opt <- indices
-        }
-        vars <- global.notation(t,y,dy,Indices=indices,Nma=0,Nar=0,GP=FALSE,gp.par=rep(NA,3))
-        tmp <- sopt(omega=NA,phi=NA,Nma=0,Nar=0,Indices=indices,data=data,type='noise',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=FALSE,gp.par=rep(NA,3),Nrep=Nrep)#
-        logLmaxs[j,1,1] <- tmp$logL
-        logBFs[j,1,1] <- tmp$logL-logLmaxs[1,1,1]-0.5*(ni-ni.min)*log(Ndata)
-        if(j>1){
-            if(logBFs[j,1,1]>(logBFs[ind.opt,1,1]+5)){
-                NI.opt <- ni
-                Inds.opt <- Inds
-                indices.opt <- indices
-                ind.opt <- j
-            }
-        }
-        if(NI.opt<(ni-1)) break()
-    }
-    ind.ma <- ind.ar <- 1
-    for(k in 1:length(Nars)){
-        nar <- Nars[k]
-        for(i in 1:length(Nmas)){
-            nma <- Nmas[i]
-            if(k>1 | i>1){
-                vars <- global.notation(t,y,dy,Indices=indices.opt,Nma=nma,Nar=nar,GP=FALSE,gp.par=rep(NA,3))
-                tmp <- sopt(omega=NA,phi=NA,Nma=nma,Nar=nar,Indices=indices.opt,data=data,type='noise',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=FALSE,gp.par=rep(NA,3),Nrep=Nrep)#
-                dN <- nis[ind.opt]-ni.min#number of additional free parameters
-                if(nma>0){
-                    dN <- dN+nma+1
-                }
-                if(nar>0){
-                    dN <- dN+nar+1
-                }
-                logLmaxs[ind.opt,i,k] <-  tmp$logL
-                logBFs[ind.opt,i,k] <-  tmp$logL-logLmaxs[1,1,1]-0.5*dN*log(Ndata)
-                if(i>1 | k>1){
-                    if(logBFs[ind.opt,i,k]>logBFs[ind.opt,ind.ma,ind.ar]+5){
-                        Nar.opt <- nar
-                        Nma.opt <- nma
-                        ind.ma <- i
-                        ind.ar <- k
-                    }
-                }
-            }
-            if(Nma.opt<nma) break()
-            if(Nar.opt<nar) break()
-        }
-    }
-    best.model <- paste0('ARMA(',Nar.opt,',',Nma.opt,')+I',flatten(Inds.opt))
-###compare the optimal noise model with GP
-    if(GP){
-        vars <- global.notation(t,y,dy,Indices=indices,Nma=0,Nar=0,GP=TRUE,gp.par=rep(NA,3))
-        tmp <- sopt(omega=NA,phi=NA,Nma=0,Nar=0,Indices=NULL,data=data,type='noise',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=TRUE,gp.par=vars$gp.par,Nrep=Nrep)
-        logLmax.gp <- tmp$logL
-        logBF.gp <- logLmax.gp-logLmaxs[1,1,1]-1.5*log(Ndata)
-        if(logBF.gp>logBFs[ind.opt,ind.ma,ind.ar]) best.model <- 'GP'
-    }else{
-        logLmax.gp <- logBF.gp <- NULL
-    }
-    cat('best logBF=',logBFs[ind.opt,ind.ma,ind.ar],'\n')
-###
-    cat('The optimal Nar=',Nar.opt,'; Nma=',Nma.opt,'; Inds=',Inds.opt,'\n')
-    return(list(Nar=Nar.opt,Nma=Nma.opt,Inds=Inds.opt,lnBF=logBFs,lnLmax=logLmaxs,logLmax.gp=logLmax.gp,logBF.gp=logBF.gp,best.model=best.model))
 }
 
 model.infer.combined <- function(data,proxy=NULL,Nma.max=6,Nar.max=0,Nrep=5,GP=FALSE){
@@ -1593,7 +1395,7 @@ model.infer <- function(data,proxy=NULL,Nma.max=6,Nar.max=0,Nrep=5,GP=FALSE){
     return(list(Nar=Nar.opt,Nma=Nma.opt,Inds=Inds.opt,lnLmaxs=lnLmaxs,lnBFs=lnBFs,GP=GPf))
 }
 
-bfp.inf.combined <- function(data,Nmas=NULL,Nars=NULL,NI.inds=0,Nrep=5,GP=FALSE){
+bfp.inf.combined <- function(data,Nmas=NULL,Nars=NULL,NI.inds=list(0),Nrep=5,GP=FALSE){
     Ndata <- nrow(data)
     data[,1] <- data[,1]-min(data[,1])
     t <- data[,1]
@@ -1669,10 +1471,120 @@ bfp.inf.combined <- function(data,Nmas=NULL,Nars=NULL,NI.inds=0,Nrep=5,GP=FALSE)
         proxy.opt <- NULL
     }
 #    ind <- which(logBFs>5,arr.ind=TRUE)
-#    print(logBFs)
-    return(list(lnLmax=logLmaxs,lnBF=logBFs,Npars=Npars,Npar.opt=Npars[ind.opt[1],ind.opt[2],ind.opt[3]],ind.opt=ind.opt,NI.opt=NI.opt,Nma.opt=Nma.opt,Nar.opt=Nar.opt,nqp=c(NI.opt=NI.opt,Nma.opt=Nma.opt,Nar.opt=Nar.opt),proxy.opt=proxy.opt))
+    return(list(lnL=logLmaxs,lnBF=logBFs,Npars=Npars,Npar.opt=Npars[ind.opt[1],ind.opt[2],ind.opt[3]],ind.opt=ind.opt,nqp=c(NI.opt=NI.opt,Nma.opt=Nma.opt,Nar.opt=Nar.opt),proxy.opt=proxy.opt))
 }
 
+bfp.inf.norm <- function(data,Nmas=NULL,Nars=NULL,NI.inds=NULL,Nrep=5,GP=FALSE){
+    Ndata <- nrow(data)
+    data[,1] <- data[,1]-min(data[,1])
+    t <- data[,1]
+    y <- data[,2]
+    dy <- data[,3]
+    Indices <- NULL
+    if(ncol(data)>3){
+        Indices <- as.matrix(data[,4:ncol(data),drop=FALSE])
+    }
+    if(is.null(Nmas)){
+        Nmas <- 0:2
+    }
+    if(is.null(Nars)){
+        Nars <- 0:2
+    }
+    if(is.null(NI.inds)){
+        NI.inds <- list(0,1:3,1:5,c(1:3,6:10),c(1:3,11:18))
+    }
+    nis <- c()
+    for(j in 1:length(NI.inds)){
+            ni.ind <- NI.inds[[j]]
+            nis <- c(nis,length(ni.ind[ni.ind!=0]))
+    }
+    ni.min <- min(nis)
+    Nma.opt <- Nmas[1]
+    Nar.opt <- Nars[1]
+    Inds.opt <- NI.inds[[1]]
+    NI.opt <- length(Inds.opt)
+    Ndata <- nrow(data)
+    logLmaxs <- array(data=NA,dim=c(length(NI.inds),length(Nmas),length(Nars)))
+    logBFs <- array(data=NA,dim=c(length(NI.inds),length(Nmas),length(Nars)),dimnames=list(paste0('NI',nis),paste0('Nma',Nmas),paste0('Nar',Nars)))
+    ind.opt <- 1
+    for(j in 1:length(NI.inds)){
+        if(!all(NI.inds[[j]]==0)){
+            ni <- nis[j]
+            Inds <- NI.inds[[j]]
+            indices <- Indices[,Inds,drop=FALSE]
+        }else{
+            ni <- 0
+            indices <- NULL
+            Inds <- 0
+        }
+        if(j==1){
+            Inds.opt <- Inds
+            indices.opt <- indices
+        }
+#cat('indices=',indices,'\n')
+        vars <- global.notation(t,y,dy,Indices=indices,Nma=0,Nar=0,GP=FALSE,gp.par=rep(NA,3))
+        tmp <- sopt(omega=NA,phi=NA,Nma=0,Nar=0,Indices=indices,data=data,type='noise',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=FALSE,gp.par=rep(NA,3),Nrep=Nrep)#
+        logLmaxs[j,1,1] <- tmp$logL
+        logBFs[j,1,1] <- tmp$logL-logLmaxs[1,1,1]-0.5*(ni-ni.min)*log(Ndata)
+        if(j>1){
+            if(logBFs[j,1,1]>(logBFs[ind.opt,1,1]+5)){
+                NI.opt <- ni
+                Inds.opt <- Inds
+                indices.opt <- indices
+                ind.opt <- j
+            }
+        }
+        if(NI.opt<(ni-1)) break()
+    }
+    ind.ma <- ind.ar <- 1
+    for(k in 1:length(Nars)){
+        nar <- Nars[k]
+        for(i in 1:length(Nmas)){
+            nma <- Nmas[i]
+            if(k>1 | i>1){
+                vars <- global.notation(t,y,dy,Indices=indices.opt,Nma=nma,Nar=nar,GP=FALSE,gp.par=rep(NA,3))
+                tmp <- sopt(omega=NA,phi=NA,Nma=nma,Nar=nar,Indices=indices.opt,data=data,type='noise',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=FALSE,gp.par=rep(NA,3),Nrep=Nrep)#
+                dN <- nis[ind.opt]-ni.min#number of additional free parameters
+                if(nma>0){
+                    dN <- dN+nma+1
+                }
+                if(nar>0){
+                    dN <- dN+nar+1
+                }
+                logLmaxs[ind.opt,i,k] <-  tmp$logL
+                logBFs[ind.opt,i,k] <-  tmp$logL-logLmaxs[1,1,1]-0.5*dN*log(Ndata)
+                if(i>1 | k>1){
+                    if(logBFs[ind.opt,i,k]>logBFs[ind.opt,ind.ma,ind.ar]+5){
+                        Nar.opt <- nar
+                        Nma.opt <- nma
+                        ind.ma <- i
+                        ind.ar <- k
+                    }
+                }
+            }
+            if(Nma.opt<nma) break()
+            if(Nar.opt<nar) break()
+        }
+    }
+    best.model <- paste0('ARMA(',Nar.opt,',',Nma.opt,')')
+###compare the optimal noise model with GP
+#cat('GP loglike\n')
+    if(GP){
+        vars <- global.notation(t,y,dy,Indices=indices,Nma=0,Nar=0,GP=TRUE,gp.par=rep(NA,3))
+        tmp <- sopt(omega=NA,phi=NA,Nma=0,Nar=0,Indices=NULL,data=data,type='noise',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=TRUE,gp.par=vars$gp.par,Nrep=Nrep)
+        logLmax.gp <- tmp$logL
+        logBF.gp <- logLmax.gp-logLmaxs[1,1,1]-1.5*log(Ndata)
+#cat('logBF.gp=',logBF.gp,'\n')
+        if(logBF.gp>logBFs[ind.opt,ind.ma,ind.ar]) best.model <- 'GP'
+    }else{
+        logLmax.gp <- logBF.gp <- NULL
+    }
+    cat('best logBF=',logBFs[ind.opt,ind.ma,ind.ar],'\n')
+#    cat('ind.opt=',ind.opt,';ind.ma=',ind.ma,';ind.ar=',ind.ar,'\n')
+###
+    cat('The optimal Nar=',Nar.opt,'; Nma=',Nma.opt,'; Inds=',Inds.opt,'\n')
+    return(list(Nar=Nar.opt,Nma=Nma.opt,Inds=Inds.opt,logBFs=logBFs,logLmaxs=logLmaxs,logLmax.gp=logLmax.gp,logBF.gp=logBF.gp,best.model=best.model))
+}
 
 combine.data <- function(data,Ninds,Nmas,GP=FALSE,gp.par=NULL){
 ###data is a list of matrices
@@ -1803,42 +1715,6 @@ MP <- function(t, y, dy,Dt,nbin,fmax=1,ofac=1,fmin=1/1000,tspan=NULL,Indices=NA,
     return(list(tmid=tmid,P=tmp$P[index],powers=powers,rel.powers=rel.powers,ndata=ndata))
 }
 
-#BFP.comp <- function(data, Nmas,Nars,NI.inds=NULL,progress=FALSE){
-#    t <- data[,1]
-#    y <- data[,2]
-#    dy <- data[,3]
-#    t <- t-min(t)
-#    Ndata <- length(t)
-#    if(ncol(data)>3){
-#        Indices <- data[,4:ncol(data)]
-#        Indices <- as.matrix(Indices)
-#    }else{
-#        NI.inds <- NULL
-#        Indices <- NA
-#    }
-#    vars <- global.notation(t,y,dy,Indices=Indices,Nma=0,Nar=0,GP=FALSE,gp.par=NULL)
-#    var <- names(vars)
-#    for(k in 1:length(var)){
-#        assign(var[k],vars[[var[k]]])
-#    }
-#    data <- cbind(t,y,dy)
-##########################################
-#####optimizing the noise parameters
-#########################################
-#    t1 <- proc.time()
-#    if(progress){
-#        out <- bfp.inf.progress(data,Nmas=Nmas,Nars=Nars,NI.inds=NI.inds)
-#    }else{
-#        out <- bfp.inf.norm(data,Nmas=Nmas,Nars=Nars,NI.inds=NI.inds)
-#        out <- bfp.inf.combined(data,Nmas=Nmas,Nars=Nars,NI.inds=NI.inds)
-#    }
-#    t2 <- proc.time()
-#    dur <- format((t2-t1)[3],digit=3)
-#    cat('model comparison computation time:',dur,'s\n\n')
-#    return(list(logBF=out$logBF,Nar=out$Nar,Nma=out$Nma,Inds=out$Inds))
-#    return(out)
-#}
-
 ####MP without progress
 MP.norm <- function(t, y, dy,Dt,nbin,fmax=1,ofac=1,fmin=1/1000,per.type='MLP',Indices=NA,...){
     n <- nbin-1
@@ -1927,7 +1803,6 @@ show.peaks <- function(ps,powers,levels=NULL,Nmax=5){
     }
     return(cbind(pms,pos))
 }
-
 BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,tspan=NULL,sampling='combined',model.type='man',progress=TRUE,quantify=FALSE,dP=0.1,section=1,GP=FALSE,gp.par=rep(NA,3),noise.only=FALSE,Nsamp=1,par.opt=NULL,renew=FALSE){
 ###gp.par is the free parameters of SHO-GP
 #    if(Nma==0 & Nar==0 & !GP) noise.only <- FALSE
@@ -1990,7 +1865,7 @@ BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,ts
     if(!is.null(par.opt)){
         vars0$start <- as.list(par.opt)
     }
-    tmp <- sopt(omega=NA,phi=NA,Nma=vars0$Nma,Nar=vars0$Nar,Indices=Indices,data=data,type='noise',par.low=vars0$par.low,par.up=vars0$par.up,start=vars0$start,noise.only=noise.only,GP=vars0$GP,gp.par=vars0$gp.par,Nrep=1)#
+    tmp <- sopt(omega=NA,phi=NA,Nma=vars0$Nma,Nar=vars0$Nar,Indices=Indices,data=data,type='noise',par.low=vars0$par.low,par.up=vars0$par.up,start=vars0$start,noise.only=noise.only,GP=vars0$GP,gp.par=vars0$gp.par,Nrep=5)#Nrep=1
 #    pars <- unlist(c(omega=NA,phi=NA,Nma=vars0$Nma,Nar=vars0$Nar,Indices=Indices,data=data[1,],type='noise',par.low=vars0$par.low,par.up=vars0$par.up,start=vars0$start,noise.only=noise.only,GP=vars0$GP,gp.par=vars0$gp.par,Nrep=1))
     logL0 <- tmp$logL
     lnl0 <- tmp$lnls
@@ -2179,7 +2054,7 @@ BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,ts
     inds <- sort(logBF,decreasing=TRUE,index.return=TRUE)$ix
     ps <- P[inds[1:5]]
     power.opt <- logBF[inds[1:5]]
-    return(list(logBF=logBF,lnbfs=lnbfs,P=P,Popt=Popt,logBF.opt=logBF.opt,par.opt=opt.par,res.nst=res.nst,res=res.nst,res.n=res.n,res.s=res.s,res.st=res.st,res.nt=res.nt,sig.level=c(-Nextra/2*log(length(y)),0,log(150)), power=logBF,ps=ps,power.opt=power.opt,ysig=ysig,pars=opt.pars,df=df,ParLow=vars1$par.low,ParUp=vars1$par.up,LogLike0=logL0))
+    return(list(data=data,logBF=logBF,lnbfs=lnbfs,P=P,Popt=Popt,logBF.opt=logBF.opt,par.opt=opt.par,res.nst=res.nst,res=res.nst,res.n=res.n,res.s=res.s,res.st=res.st,res.nt=res.nt,sig.level=c(-Nextra/2*log(length(y)),0,log(150)), power=logBF,ps=ps,power.opt=power.opt,ysig=ysig,pars=opt.pars,df=df,ParLow=vars1$par.low,ParUp=vars1$par.up,LogLike0=logL0))
 }
 
 LMkepler <- function(ParIni,ParLow,ParUp,df){
@@ -2205,7 +2080,7 @@ detIni <- function(par,par.low,par.up){
     as.list(start)
 }
 
-Circ2kep <- function(per,basis='linear'){
+Circ2kep <- function(per,basis='natural',per.type='BFP'){
 ####################################################
 ## Find the Keplerian signal corresponding to the circular signal
 ## Input:
@@ -2215,14 +2090,27 @@ Circ2kep <- function(per,basis='linear'){
 ##   ParKep - Parameters of a Keplerian model
 ####################################################
     frac <- 0.1
-    t <- per$df$data[,1]
+    t <- per$data[,1]
     Popt <- as.numeric(per$Popt[1])#day
+    if(is.null(dim(per$par.opt))){
+        per$par.opt <- t(replicate(2,per$par.opt))
+    }
     PhiOpt <- as.numeric(xy2phi(per$par.opt[1,'A'],per$par.opt[1,'B']))
     Kopt <- as.numeric(sqrt(per$par.opt[1,'A']^2+per$par.opt[1,'B']^2))
     ind <- which(colnames(per$par.opt)!='A' & colnames(per$par.opt)!='B')
-    ParLow <- per$ParLow
-    ParUp <- per$ParUp
+    if(is.null(per$ParLow)){
+#        vars <- global.notation(per$data[,1],per$data[,2],per$data[,3],Nma=0,Nar=0,Indices=NA,GP=FALSE,gp.par=FALSE)
+#        ParLow <- vars$par.low
+#        ParUp <- vars$par.up
+        ParLow <- ParUp <- c(sj=0)
+    }else{
+        ParLow <- per$ParLow
+        ParUp <- per$ParUp
+    }
     ParOpt <- per$par.opt[1,ind]
+    if(!any(names(ParOpt)=='sj')){
+        ParOpt <- c(ParOpt,sj=0)
+    }
     if(any(colnames(per$par.opt)=='beta')){
         betaLow <- as.numeric(per$par.opt[1,'beta']-5*sd(per$par.opt[,'beta']))
         betaUp <- as.numeric(per$par.opt[1,'beta']+5*sd(per$par.opt[,'beta']))
@@ -2230,8 +2118,8 @@ Circ2kep <- function(per,basis='linear'){
         ParUp <- c(beta=betaUp,ParUp)
     }
     if(any(colnames(per$par.opt)=='gamma')){
-        gammaLow <- as.numeric(per$par.opt[1,'gamma']-5*sd(per$par.opt[,'gamma']))
-        gammaUp <- as.numeric(per$par.opt[1,'gamma']+5*sd(per$par.opt[,'gamma']))
+        gammaLow <- as.numeric(per$par.opt[1,'gamma']-max(5*sd(per$par.opt[,'gamma']),100))
+        gammaUp <- as.numeric(per$par.opt[1,'gamma']+max(5*sd(per$par.opt[,'gamma']),100))
         ParLow <- c(gamma=gammaLow,ParLow)
         ParUp <- c(gamma=gammaUp,ParUp)
     }
@@ -2252,10 +2140,15 @@ Circ2kep <- function(per,basis='linear'){
         ParIni <- runif(length(ParLow),ParLow,ParUp)
         names(ParIni) <- names(ParLow)
         ParIni <- as.list(ParIni)
-        df <- c(per$df,basis=basis)
+#    df <- list(data=tmp,Indices=Indices,par.fix=par.fix,Nma=Nma,NI=NI,GP=GP)
+        if(!is.null(per$df)){
+            df <- per$df
+        }else{
+            df <- list(data=per$data,Indices=NULL, basis=basis)
+        }
+#        df <- list(data=cbind(t,y,dy),Indices=Indices,par.fix=par.fix,Nma=Nma,Nar=Nar,NI=NI,GP=GP)
         eps <- 1e-16
         out <- try(nls.lm(par = ParIni,lower=ParLow,upper=ParUp,fn = KepRes,data=df,control=nls.lm.control(maxiter=1024,ptol=eps,gtol=eps,ftol=eps)),TRUE)
-#        out <- nls.lm(par = ParIni,lower=ParLow,upper=ParUp,fn = KepRes,data=df,control=nls.lm.control(maxiter=1024,ptol=eps,gtol=eps,ftol=eps))
         if(class(out)!='try-error'){
             pars <- rbind(pars,coef(out))
             ll <- c(ll,-sum(out$fvec^2))#logLike
@@ -2266,12 +2159,12 @@ Circ2kep <- function(per,basis='linear'){
     ind <- which.max(ll)
     llmax <- ll[ind]
     ParKep <- as.list(pars[ind,])
-    if(basis=='linear' & FALSE){
-        e  <- sqrt(ParKep$ecosw^2+ParKep$esinw^2)
+    if(basis=='linear'){
+#        e  <- sqrt(ParKep$ecosw^2+ParKep$esinw^2)
     }
     DlogLike <-llmax-per$LogLike0
-    lnBF3 <- DlogLike-1.5*log(length(per$df$data))
-    lnBF5 <- DlogLike-2.5*log(length(per$df$data))
+    lnBF3 <- DlogLike-1.5*log(length(per$data))
+    lnBF5 <- DlogLike-2.5*log(length(per$data))
     Pred <- KeplerRv(ParKep,df)
     return(list(ParKep=ParKep,ParLow=ParLow,ParUp=ParUp,LogLike=ll,lnBF3=lnBF3,lnBF5=lnBF5,ll0=per$LogLike0,lls=ll,pars=pars,Pred=Pred,df=df))
 }
@@ -2330,6 +2223,8 @@ KeplerRv <- function(par,data){
                 Mo <- getM0(e=e,omega=omega,P=P,T=Tc,T0=tmin,type='primary')
             }
             m <- (Mo+2*pi*tt/P)%%(2*pi)#mean anomaly
+#            cat('head(m)=',head(m),'\n')
+#            cat('e=',e,'\n')
             E <- kep.mt2(m,e)
             T <- 2*atan(sqrt((1+e)/(1-e))*tan(E/2))#true anomaly
             rv <- rv+K*(cos(omega+T)+e*cos(omega))
@@ -2353,8 +2248,8 @@ KeplerRv <- function(par,data){
     }
     rv <- rv+rv.proxy
 ####red noise model
-    Nma <- length(grep('^m\\d$',names(pars)))
-    Nar <- length(grep('^l\\d$',names(pars)))
+    Nma <- length(grep('^m\\d$',names(par)))
+    Nar <- length(grep('^l\\d$',names(par)))
     if(Nma>0 & is.null(tsim)){
         for(i in 1:Nma){
             rs <- c(rep(0,k),rv[-(length(t)+1-(1:k))])

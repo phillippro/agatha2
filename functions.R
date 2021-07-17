@@ -92,7 +92,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
         if(ypar!='Window Function'){
             y <- tab[,ypar]
             if(per.type=='GLST'){
-                rv.ls <- glst(t=tab[,1]-min(tab[,1]),y=y,err=dy,ofac=ofac,fmin=frange[1],fmax=frange[2])
+                rv.ls <- glst(t=tab[,1],y=y,err=dy,ofac=ofac,fmin=frange[1],fmax=frange[2])
                 ylab <- 'Power'
                 name <- 'power'
             }else if(per.type=='GLS'){
@@ -134,7 +134,6 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
                             Nma=Nma,Nar=Nar,model.type='man',Indices=Indices,
                             ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify, renew=renew)
 ###renew: every chi-square minimization start from the initial parameter values
-
                 ylab <- 'ln(BF)'
                 name <- 'logBF'
             }else if(per.type=='MLP'){
@@ -163,7 +162,6 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
             }
 #            f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',per.type,'_MA',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
             f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',per.type,'_AR',paste(Nars,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
-
         }else{
             rv.ls <- lsp(times=tab[,1]-min(tab[,1]),x=rep(1,nrow(tab)),ofac=ofac,from=frange[1],to=frange[2],alpha=c(0.1,0.01,0.001))
             tit <- paste0('LS;',instrument,';',ypar)
@@ -180,9 +178,8 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
             }
 #           f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',pt,'_MA',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
             f <-  paste0(paste(per.target,collapse='_'),'_',gsub(' ','',ypar),'_',pt,'_AR',paste(Nmas,collapse=''),'proxy',paste(Inds,collapse='.'),'_1sig_',format(rv.ls$P[which.max(rv.ls$power)],digit=2),'d')
-
             ylab <- 'Power'
-                name <- 'power'
+            name <- 'power'
         }
         ylabs <- c(ylabs,ylab)
         tits <- c(tits,tit)
@@ -216,6 +213,12 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
         inds <- (ncol(per.data)-1):ncol(per.data)
         if(i==1)  cnames <- c(cnames,'P')
         cnames <- c(cnames,paste0(pers[i],'1signal:',gsub(' .+','',ypar),':',name))
+
+####calculate the Keplerian fit
+        if(SigType=='kepler'){
+            tmp <- sigfit(per=rv.ls,SigType=SigType)
+            rv.ls <- tmp$per
+        }
         if(exists('per.type.seq') & ypar==ns[1]){
             if(per.type==per.type.seq){
                 if(length(per.target)>1){
@@ -243,6 +246,62 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
     return(list(per.data=per.data,tits=tits,pers=pers,levels=sig.levels,ylabs=ylabs,fname=fname,fs=fs))
 }
 
+sigfit <- function(per,SigType='circular'){
+###This function is to modify the output of various periodograms to give residual, model prediction, and optimal parameters as well as posterior/likelihood samples
+##x is a list
+##SigType is either circular or kepler
+    ParSig <- par.opt <- unlist(per$par.opt)
+    data <- per$data
+    tmin <- min(data[,1])%%2400000
+    t <- data[,1]%%2400000-tmin
+    tsim <- seq(0,max(t),length.out=1e3)
+    if(!any(names(per)=='ysims')) per$ysims <- ysims <- 0
+    gamma <- 0
+    beta <- 0
+    popt <- per$P
+    save.data <- FALSE
+    if(SigType!='kepler'){
+        ysim0 <- par.opt[1]*cos(2*pi/popt*tsim)+par.opt[2]*sin(2*pi/popt*tsim)
+        ysim <- ysim0+par.opt[3]+par.opt[4]*tsim
+        per$ysims <- per$ysims+ysim
+        y1 <- per$data[,2]-(par.opt[3]+par.opt[4]*t)
+        if(save.data){
+            f0 <- paste0(star,'_OptPar.txt')
+            cat(f0,'\n')
+            pars <- t(c(Popt=popt,par.opt))
+            write.table(pars,file=f0,quote=FALSE,row.names=FALSE)
+        }
+    }else{
+        kep <- Circ2kep(per,basis='natural')
+        ParSig <- unlist(kep$ParKep)
+        y1 <- per$data[,2]-kep$Pred$rv.red-kep$Pred$rv.trend#residual without red noise
+        df <- kep$df
+        per$res <- per$data[,2]-kep$Pred$rv.kep-kep$Pred$rv.trend#preserve red noise component
+        popt <- kep$ParKep$P1
+#        Popts[length(Popts)] <- popt
+        df$tsim <- tsim
+        par.sim0 <- par.sim <- kep$ParKep
+        gamma <- gamma+par.sim$gamma
+        beta <- beta+par.sim$beta
+        par.sim0$beta <- par.sim0$gamma  <- 0
+        ysim0 <- KeplerRv(par.sim0,df)$rv#without trend
+        ysim <- KeplerRv(par.sim,df)$rv#with trend
+        per$ysims <- per$ysims+ysim
+        if(save.data){
+            f0 <- paste0(star,'_OptPar.txt')
+            cat(f0,'\n')
+            write.table(t(unlist(kep$ParKep)),file=f0,quote=FALSE,row.names=FALSE)
+        }
+    }
+
+####output
+    tsim1 <- tsim%%popt
+    inds <- sort(tsim1,index.return=TRUE)$ix
+    tsim2 <- tsim1[inds]
+    ysim2 <- ysim0[inds]
+    return(list(per=per,t=t%%popt,y=y1,ey=data[,3],res=per$res,tsim=tsim2,ysim=ysim2,ParSig=ParSig))
+}
+
 per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL){
     if(is.null(index)){
         par(mfrow=c(ceiling(Nmax.plots/2),2),mar=c(5,5,3,1),cex.lab=1.5,cex.axis=1.5,cex=1,cex.main=1.0)
@@ -265,7 +324,6 @@ per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL
         f1 <- gsub('signal:.+','',colnames(per.data)[i+1])
         Nsig <- gsub('[A-Z]','',f1)
         ymin <- median(power)
-#        cat('levels[,i]=',levels[,i],'\n')
         if(grepl('Window',titles[i])){
             ylim <- c(ymin,max(power)+0.15*(max(power)-ymin))
         }else{
@@ -344,7 +402,7 @@ per2D.data <- function(vars,per.par,data){
     }
     ypar <- var
     t <- tab[,1]%%2400000#min(tab[,1])
-    y <- tab[,ypar]
+    y <- tab[,yvar]
     dy <- tab[,3]
     if(length(per.target)==1){
         mp <- MP(t=t,y=y,dy=dy,Dt=Dt,nbin=Nbin,ofac=ofac,fmin=frange[1],fmax=frange[2],per.type=per.type,sj=0,Nma=Nma,Inds=Inds,Indices=Indices)
@@ -425,7 +483,6 @@ calcBF <- function(data,Nbasic,proxy.type,Nma.max,Nar.max,groups=NULL,Nproxy=NUL
                     NI.inds[[j+1]] <- inds[1:j]
                 }
             }
-#            cat('NI.inds=',unlist(NI.inds),'\n')
         }else if(proxy.type=='group' & Nvary>0){
             NI.inds <- lapply(1:(length(groups)+1),function(i) NI.inds[[i]] <- list())
             if(Nbasic>0){

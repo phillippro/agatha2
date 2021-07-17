@@ -177,7 +177,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                         choices=c('MLP'),selected="MLP",multiple=TRUE)
         }else{
             selectInput("per.type",'Periodogram type',
-                        choices=c('BFP','MLP','GLST','BGLS','GLS','LS'),selected="BFP",multiple=TRUE)
+                        choices=c('BFP','MLP','GLST','BGLS','GLS','LS'),selected="GLST",multiple=TRUE)
         }
     })
 
@@ -620,7 +620,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
     })
 
   per.par <- reactive({
-      vals <- list(ns=ns(),ofac=input$ofac,frange=1/prange()[2:1],per.type=input$per.type,per.target=input$per.target)
+      vals <- list(ns=ns(),ofac=input$ofac,frange=1/prange()[2:1],per.type=input$per.type,per.target=input$per.target,SigType=input$signal.type)
       if(any(input$per.type=='MLP' | input$per.type=='BFP')){
           Nars <- Nmas <- c()#consider multiple orders
           Inds <- list()
@@ -647,7 +647,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
   })
 
   per.par2 <- reactive({
-      vals <- list(ns=ns(),ofac=input$ofac2,frange=1/prange2()[2:1],per.type=input$per.type2,per.target=input$per.target2)
+      vals <- list(ns=ns(),ofac=input$ofac2,frange=1/prange2()[2:1],per.type=input$per.type2,per.target=input$per.target2)#SigType=input$signal.type
       if(any(input$per.type2=='MLP'|input$per.type2=='BFP')){
           Nmas <- c()
           Nars <- c()

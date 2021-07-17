@@ -3,7 +3,6 @@ tol2 <- 1e-20
 tol3 <- 1e-30
 ###The following function is adapted from bgls.py by Mortier et al. 2015
 bgls <- function(t, y, err, ofac=1,fmax=1,fmin=NA,tspan=NULL,sampling='combined',section=1){
-    data <- cbind(t,y,err)
     unit <- 1
     t <- t-min(t)
     dy <- err
@@ -89,12 +88,11 @@ bgls <- function(t, y, err, ofac=1,fmax=1,fmin=NA,tspan=NULL,sampling='combined'
     yp <- gls.model(t,par.full)
     res <- y-yp
     level <- log(c(10,100,1000))
-    return(list(data=data,P=1/f, power=power,res=res,ps=ps,power.opt=power.opt,sig.level=level,df=df))
+    return(list(y=y,P=1/f, power=power,res=res,ps=ps,power.opt=power.opt,sig.level=level))
 }
 
 ###based on Zechmeister09.pdf or ZK09 and the lsp function in the 'lomb' library
 gls <- function(t, y, err,ofac=1, norm="Cumming",fmax=1,fmin=NA,tspan=NULL,sampling='combined',section=1){
-    data <- cbind(t,y,err)
     t <- t-min(t)
     dy <- err
     if(is.null(tspan)){
@@ -207,7 +205,7 @@ if(FALSE){
     inds <- sort(power,decreasing=TRUE,index.return=TRUE)$ix
     ps <- 1/f[inds[1:5]]
     power.opt <- power[inds[1:5]]
-    return(list(data=data,P=1/f, power=power, pvalue=pp, sig.level=level,res=res,par.opt=par.opt,ps=ps,power.opt=power.opt,lnBFs=lnBFs,df=df))
+    return(list(y=y,P=1/f, power=power, pvalue=pp, sig.level=level,res=res,par.opt=par.opt,ps=ps,power.opt=power.opt,lnBFs=lnBFs))
 }
 
 ###generalized lomb-scargle periodogram with trend component
@@ -215,7 +213,6 @@ glst <- function(t, y, err,ofac=1, norm="Cumming",fmax=1,fmin=NA,tspan=NULL,samp
 #    unit <- 365.24#to make the elements of the matrix in the function of 'solve' on the same order
     unit <- 1
     t <- t-min(t)
-    data <- cbind(t,y,err)
     if(is.null(tspan)){
         tspan <- max(t)-min(t)
     }
@@ -304,14 +301,16 @@ glst <- function(t, y, err,ofac=1, norm="Cumming",fmax=1,fmin=NA,tspan=NULL,samp
     ind.max <- which.max(power)
     omega.opt <- 2*pi*f[ind.max]
     par.opt <- pars[ind.max,]
-    names(par.opt) <- c('A','B','gamma','beta')
+    names(par.opt) <- c('A','B','gamma','gammadot')
     lnBFs <- 0.5*(chi2.ref-chi2s)-1.5*log(N)
     yp <- par.opt[1]*cos(omega.opt*t)+par.opt[2]*sin(omega.opt*t)+par.opt[3]+par.opt[4]*t
     res <- y-yp
     inds <- sort(power,decreasing=TRUE,index.return=TRUE)$ix
     ps <- 1/f[inds[1:5]]
     power.opt <- power[inds[1:5]]
-    return(list(data=data,P=unit/f, power=power, pvalue=pp, sig.level=level,Popt=P[ind.max],ps=ps,res=res,power.opt=power.opt,ysig=yp,par.opt=par.opt,lnBFs=lnBFs))
+#    par.fix <- list(omega=omega.opt,phi=0)
+#    df <- list(t=t,y=y,dy=dy,par.fix=par.fix)
+    return(list(y=y,P=unit/f, power=power, pvalue=pp, sig.level=level,Popt=P[ind.max],ps=ps,res=res,power.opt=power.opt,ysig=yp,par.opt=par.opt,lnBFs=lnBFs,df=df))
 }
 ####extra routine
 #####optimal parameters
@@ -385,7 +384,6 @@ findPeak3 <- function(p,power,max.only=TRUE,beta=0.1){
 
 lsp <- function(x, times = NULL, from = NULL, to = NULL, tspan=NULL, ofac = 1, alpha = 0.01,sampling='combined',section=1)
 {
-    data <- cbind(times,x)
     unit <- 1
     times <- as.numeric(times)
     start <- min(times)
@@ -467,7 +465,7 @@ lsp <- function(x, times = NULL, from = NULL, to = NULL, tspan=NULL, ofac = 1, a
     ps <- 1/freq[inds[1:10]]
     power.opt <- power[inds[1:10]]
 ###
-    sp.out <- list(data=data,P = P, power = power, ps=ps, power.opt=power.opt, alpha = alpha, sig.level = level, peak = PN.max, peak.at = peak.at, p.value = p,par=par.full,res=res,power.opt=power.opt)
+    sp.out <- list(P = P, power = power, ps=ps, power.opt=power.opt, alpha = alpha, sig.level = level, peak = PN.max, peak.at = peak.at, p.value = p,par=par.full,res=res,power.opt=power.opt)
     return(sp.out)
 }
 

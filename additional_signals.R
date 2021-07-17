@@ -65,5 +65,16 @@ for(jj in 2:Nsig.max){
     }
     cnames <- c(cnames,paste0(per.type.seq,jj,'signal:',ypar,':',name))
     ylabs <- c(ylabs,ylab)
+###modify the periodogram output for Keplerian fit
+    if(SigType=='kepler'){
+        tmp <- sigfit(per=rv.ls,SigType=SigType)
+        rv.ls <- tmp$per
+    }
+#    cat('ParOpt=',rv.ls$par.opt,'\n')
+    cat('head(rv.ls$res)=',head(rv.ls$res),'\n')
+    cat('sd(rv.ls$res)=',sd(rv.ls$res),'\n')
+#    cat('head(rv.ls$res)=',head(rv.ls$res),'\n')
+    cat('Popt=',rv.ls$Popt,'\n')
 }
+
 
