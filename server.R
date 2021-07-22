@@ -958,7 +958,7 @@ output$color <- renderUI({
         },
       content = function(file) {
         pdf(file,8,8)
-        per1D.plot(data1D()$per.data,data1D()$tits,data1D()$pers,data1D()$levels,ylabs=data1D()$ylabs,download=TRUE)
+        per1D.plot(data1D()$per.data,data1D()$tits,data1D()$pers,data1D()$levels,ylabs=data1D()$ylabs,download=TRUE,SigType=input$signal.type)
         dev.off()
       })
 
@@ -991,7 +991,7 @@ output$color <- renderUI({
           png(file,width=4,height=4,units="in", res=150)
         par(mar=c(5,5,1,1))
         ind <- which(input$per1D.name==data1D()$tits)
-        per1D.plot(data1D()$per.data,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs,download=TRUE,index=ind)
+        per1D.plot(data1D()$per.data,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs,download=TRUE,index=ind,SigType=input$signal.type)
         dev.off()
       })
 
@@ -1017,7 +1017,7 @@ output$color <- renderUI({
 
     output$combined <- renderPlot({
         if(is.null(data1D())) return()
-        combined.plot(data1D()$per.data,data1D()$phase.data,data1D()$sim.data,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs)
+        combined.plot(data1D()$per.data,data1D()$phase.data,data1D()$sim.data,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs,SigType=input$signal.type)
     })
 
     output$plot.1Dcombined <- renderUI({

@@ -456,7 +456,7 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
     lines(tsim0+min(t),ysim0,col='red',lwd=3)
     points(t,y,col='black')
     try(arrows(t,y-ey,t,y+ey,length=0.03,angle=90,code=3,col=tcol('black',50)),TRUE)
-    legend('topright',bty='n',legend=paste('RMS =',round(sd(res),1),'\n'))
+    legend('topright',bty='n',legend=paste('RMS =',round(sd(y),1),'\n'))
 
 ###residual
     plot(t,res,xlab='BJD [day]',ylab='Y',main=gsub('\\d signal','residual',titles[i]))
@@ -464,12 +464,12 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
     legend('topright',bty='n',legend=paste('RMS =',round(sd(res),1),'\n'))
 }
 
-combined.plot <- function(per.data,phase.data,sim.data,tits,pers,levels,ylabs,download=FALSE,index=NULL){
-    per1D.plot(per.data,tits,pers,levels,ylabs,download=download,index=index)
+combined.plot <- function(per.data,phase.data,sim.data,tits,pers,levels,ylabs,SigType='circular',download=FALSE,index=NULL){
+    per1D.plot(per.data,tits,pers,levels,ylabs,download=download,index=index,SigType=SigType)
     phase1D.plot(phase.data,sim.data,tits=tits,download=download,index=index,repar=FALSE)
 }
 
-per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL){
+per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL,SigType='circular'){
     if(is.null(index)){
         par(mfrow=c(ceiling(Nmax.plots/2),2),mar=c(5,5,3,1),cex.lab=1.5,cex.axis=1.5,cex=1,cex.main=1.0)
     }
@@ -490,7 +490,7 @@ per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL
         per.type <- gsub('[[:digit:]]signal:.+','',colnames(per.data)[i+1])
         f1 <- gsub('signal:.+','',colnames(per.data)[i+1])
         Nsig <- gsub('[A-Z]','',f1)
-        if(pers=='BGLS'|pers=='MLP'){
+        if(pers=='BGLS'|pers=='MLP'|(pers=='BFP' & SigType!='stochastic')){
             ymin <- median(power)
         }else{
             ymin <- max(0,min(power))
