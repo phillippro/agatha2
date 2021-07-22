@@ -58,9 +58,10 @@ phase.plot <- function(df,fold=TRUE){
         lines(df$tsim,df$ysim,col='red')
     }
     points(df$t,df$y)
+#    plot(df$t,df$res,xlab='T',ylab='RV [m/s]',main=paste('RMS:',round(sd(df$y),1)))
 }
 
-fout <- paste0('ChallengeSet1_',per.type,'_ofac',ofac,'_ARMA',Nma,Nar,'_NI',ncol(Indices),'_',SigType,'_',basis,'_fold',fold,'.pdf')
+fout <- paste0('results/ChallengeSet1_',per.type,'_ofac',ofac,'_ARMA',Nma,Nar,'_NI',ncol(Indices),'_',SigType,'_',basis,'_fold',fold,'.pdf')
 cat(fout,'\n')
 pdf(fout,16,16)
 par(mfrow=c(4,4))

@@ -418,6 +418,8 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
             par(mfrow=c(2,2),mar=c(5,5,3,1),cex.lab=1.2,cex.main=0.8,cex.axis=1.2,cex=1)
         }
     }
+    save(list=ls(all=TRUE),file='test1.Robj')
+    ylab <- unlist(strsplit(tits[1],';'))[3]
     if(!is.null(index)){
         inds <- index
         titles <- rep('',inds)
@@ -435,11 +437,10 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
         tsim <- sim.data[,paste0('tsim_sig',i)]
         ysim <- sim.data[,paste0('ysim_sig',i)]
 
-        ysig0 <- ysig0+y
+        ysig0 <- ysig0+phase.data[,paste0('ysig_sig',i)]
         ysim0 <- ysim0+sim.data[,paste0('ysim0_sig',i)]
 
-        ylab <- 'y'
-        plot(t,y,xlab='Phase [day]',ylab='Y',main=titles[i],col='white')
+        plot(t,y,xlab='Phase [day]',ylab=ylab,main=titles[i],col='white')
 #    lines(df$tsim,df$ysim,col=tcol('red',50))
         lines(tsim,ysim,col='red',lwd=3)
         points(t,y,col='black')
@@ -452,16 +453,16 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
     y <- res+ysig0
     tsim0 <- sim.data[,'tsim0']
 
-    plot(t,y,xlab='BJD [day]',ylab='Y',main=gsub('\\d signal','combined fit',titles[i]),col='white')
+    plot(t,y,xlab='BJD [day]',ylab=ylab,main=gsub('\\d signal','combined fit',titles[i]),col='white')
     lines(tsim0+min(t),ysim0,col='red',lwd=3)
     points(t,y,col='black')
     try(arrows(t,y-ey,t,y+ey,length=0.03,angle=90,code=3,col=tcol('black',50)),TRUE)
-    legend('topright',bty='n',legend=paste('RMS =',round(sd(y),1),'\n'))
+    legend('topright',bty='n',legend=paste('RMS =',round(sd(y),1),'\n'),text.col='blue')
 
 ###residual
-    plot(t,res,xlab='BJD [day]',ylab='Y',main=gsub('\\d signal','residual',titles[i]))
+    plot(t,res,xlab='BJD [day]',ylab=ylab,main=gsub('\\d signal','residual',titles[i]))
     try(arrows(t,res-ey,t,res+ey,length=0.03,angle=90,code=3,col=tcol('black',50)),TRUE)
-    legend('topright',bty='n',legend=paste('RMS =',round(sd(res),1),'\n'))
+    legend('topright',bty='n',legend=paste('RMS =',round(sd(res),1),'\n'),text.col='blue')
 }
 
 combined.plot <- function(per.data,phase.data,sim.data,tits,pers,levels,ylabs,SigType='circular',download=FALSE,index=NULL){
