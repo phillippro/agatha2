@@ -4,16 +4,20 @@ library(ramify)
 #library(ggplot2)
 # use the below options code if you wish to increase the file input limit, in this example file input limit is increased from 5MB to 9MB
 # options(shiny.maxRequestSize = 9*1024^2)
-source('periodoframe.R')
-source("periodograms.R")
-source('functions.R',local=TRUE)
 options(shiny.maxRequestSize=30*1024^2)
 Nmax.plots <- 50
 renew <- FALSE
 count0 <- 0
 instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
 tol <- 1e-16
+progress <- TRUE
 #trend <- FALSE
+##load functions
+source('periodoframe.R')
+source("periodograms.R")
+source('functions.R',local=TRUE)
+source('mcmc_func.R')
+
 data.files <- list.files(path='data',full.name=FALSE)
 
 shinyServer(function(input, output, session){
@@ -96,64 +100,50 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
         selectInput("per.type.seq",'Periodogram used to find additional signals',choices=input$per.type,selected=NULL,multiple=FALSE)
     })
 
- output$Nsig.max <- renderUI({
-        if(is.null(input$sequence)) return()
-        if(input$sequence) sliderInput("Nsig.max", "Maximum number of signals", min = 2, max = 10,value=3,step=1)
+    output$sequential <- renderUI({
+        if(is.null(Ntarget()) | is.null(input$signal.type)) return()
+        if(input$signal.type!='stochastic'){
+            checkboxInput('sequence','Find additional signals sequentially',value=TRUE)
+        }
     })
 
+    output$Nsig.max <- renderUI({
+        if(is.null(Ntarget()) | is.null(input$signal.type)) return()
+        if(input$signal.type!='stochastic'){
+            sliderInput("Nsig.max", "Maximum number of signals", min = 2, max = 10,value=3,step=1)
+        }
+    })
 
     output$nar <- renderUI({
-    if(is.null(Ntarget())) return()
-    if(input$per.type=='MLP'){
+    if(is.null(input$per.target) | is.null(input$per.type)) return()
+    if(any(input$per.type=='MLP'|input$per.type=='BFP')){
         lapply(1:Ntarget(), function(i){
             selectizeInput(paste0("Nar",i),paste('Number of AR components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
 	)
         }
-      if(input$per.type=='BFP'){
-          lapply(1:Ntarget(), function(i){
-              selectizeInput(paste0("Nar",i),paste('Number of AR components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
-        )
-	}
   })
 
-
   output$nma <- renderUI({
-    if(is.null(Ntarget())) return()
-    if(input$per.type=='MLP'){
+    if(is.null(input$per.target) | is.null(input$per.type)) return()
+    if(input$per.type=='MLP'|input$per.type=='BFP'){
         lapply(1:Ntarget(), function(i){
             selectizeInput(paste0("Nma",i),paste('Number of MA components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
 	)
         }
-      if(input$per.type=='BFP'){
-          lapply(1:Ntarget(), function(i){
-              selectizeInput(paste0("Nma",i),paste('Number of MA components for',input$per.target[i]),choices = 0:10,selected = 0,multiple=FALSE)}
-        )
-	}
   })
 
-
-
-#  output$nma2 <- renderUI({
-#    if(is.null(Ntarget2())) return()
-#    if(any(input$per.type2=='MLP' | input$per.type2=='BFP')){
-#        lapply(1:Ntarget2(), function(i){
-#            selectizeInput(paste0("Nma2.",i),paste('Number of MA components for',input$per.target2[i]),choices = 0:10,selected = 0,multiple=FALSE)
-#        })
-#    }
-#  })
-                                        #
-#      output$nar2 <- renderUI({
-#    if(is.null(Ntarget2())) return()
-#    if(any(input$per.type2=='MLP' | input$per.type2=='BFP')){
-#        lapply(1:Ntarget2(), function(i){
-#            selectizeInput(paste0("Nar2.",i),paste('Number of AR components for',input$per.target2[i]),choices = 0:10,selected = 0,multiple=FALSE)
-#        })
-#    }
-#  })
-#
     output$per.target <- renderUI({
         if(is.null(data())) return()
         selectizeInput("per.target",'Data sets',choices=names(data()),selected=names(data())[1],multiple=TRUE)
+    })
+
+    output$signal <- renderUI({
+        if(is.null(input$per.type)) return()
+        if(input$per.type=='BFP'){
+            radioButtons("signal.type",'Signal type',c("Circular"="circular","Keplerian"='kepler','Stochastic'='stochastic'))
+        }else{
+            radioButtons("signal.type",'Signal type',c("Circular"="circular","Keplerian"='kepler'))
+        }
     })
 
     Ntarget <- reactive({
@@ -640,8 +630,12 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
           vals <- c(vals,Nmas=0,Nars=0,Inds=0)
       }
       if(input$sequence){
-#          vals <- c(vals,Nmas=0,Inds=0,per.type.seq=input$per.type.seq, Nsig.max=as.integer(input$Nsig.max))
-          vals <- c(vals,Nmas=0,Nars=0,Inds=0,per.type.seq=input$per.type.seq, Nsig.max=as.integer(input$Nsig.max))
+          if(input$signal.type=='stochastic'){
+              Nsig.max <- 1
+          }else{
+              Nsig.max <- as.integer(input$Nsig.max)
+          }
+          vals <- c(vals,per.type.seq=input$per.type.seq, Nsig.max=Nsig.max)
       }
       return(vals)
   })
@@ -753,8 +747,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
           paste('logBF_',input$comp.target,'_', f2, '.csv', sep='')
       },
       content = function(file) {
-#          write.table(round(model.selection()$logBF.download,digit=1), file,quote=FALSE,row.names=FALSE)
-          write.table(round(model.selection()$logBF.download,digit=1), file,quote=FALSE,sep='|')
+          write.csv2(round(model.selection()$logBF.download,digit=1), file,quote=FALSE)
       }
   )
 
@@ -893,69 +886,117 @@ output$color <- renderUI({
   })
 
 ###get BFP power spectrum
-  per1D.data <- eventReactive(input$plot1D,{
+    data1D <- eventReactive(input$plot1D,{
 ###use calc.1Dper() from functions.R to calculate periodogram
-          calc.1Dper(Nmax.plots, periodogram.var(),per.par(),data())
-  })
+        calc.1Dper(Nmax.plots, periodogram.var(),per.par(),data())
+    })
 
     output$per1D.data <- downloadHandler(
         filename = function() {
-            paste0(per1D.data()$fname,'.txt')
-#            f1 <- gsub(" ",'_',Sys.time())
-#            f2 <- gsub(":",'-',f1)
-#            paste('periodogram1D_', f2, '.txt', sep='')
+            paste0(data1D()$fname,'_Periodogram.txt')
         },
         content = function(file) {
-            tab <- per1D.data()$per.data
+            tab <- data1D()$per.data
             write.table(tab, file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
         }
     )
 
+    output$phase1D.data <- downloadHandler(
+        filename = function() {
+            paste0(data1D()$fname,'_PhaseData.txt')
+        },
+        content = function(file) {
+            tab <- data1D()$phase.data
+            write.table(tab, file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
+        }
+    )
+
+    output$sim1D.data <- downloadHandler(
+        filename = function() {
+            paste0(data1D()$fname,'_SimFit.txt')
+        },
+        content = function(file) {
+            tab <- data1D()$sim.data
+            write.table(tab, file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
+        }
+    )
+
+    output$par1D.data <- downloadHandler(
+        filename = function() {
+            paste0(data1D()$fname,'_OptPar.txt')
+        },
+        content = function(file) {
+            tab <- data1D()$par.data
+            write.table(t(tab), file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
+        }
+    )
+
+
     output$download.per1D.data <- renderUI({
-        if(is.null(per1D.data())) return()
+        if(is.null(data1D())) return()
         downloadButton('per1D.data', 'Download data of periodograms')
+    })
+
+    output$download.phase1D.data <- renderUI({
+        if(is.null(data1D())) return()
+        downloadButton('phase1D.data', 'Download data for phase plots')
+    })
+
+    output$download.sim1D.data <- renderUI({
+        if(is.null(data1D())) return()
+        downloadButton('sim1D.data', 'Download data for model prediction')
+    })
+
+    output$download.par1D.data <- renderUI({
+        if(is.null(data1D())) return()
+        downloadButton('par1D.data', 'Download optimal parameter values')
     })
 
     output$per1D.figure <- downloadHandler(
         filename = function() {
-            paste0(per1D.data()$fname,'.pdf')
- #           f1 <- gsub(" ",'_',Sys.time())
- #           f2 <- gsub(":",'-',f1)
- #           paste('periodogram1D_', f2, '.pdf', sep='')
+            paste0(data1D()$fname,'_Periodogram.pdf')
         },
       content = function(file) {
         pdf(file,8,8)
-        per1D.plot(per1D.data()$per.data,per1D.data()$tits,per1D.data()$pers,per1D.data()$levels,ylabs=per1D.data()$ylabs,download=TRUE)
+        per1D.plot(data1D()$per.data,data1D()$tits,data1D()$pers,data1D()$levels,ylabs=data1D()$ylabs,download=TRUE)
         dev.off()
       })
 
+    output$phase1D.figure <- downloadHandler(
+        filename = function() {
+            paste0(data1D()$fname,'_Phase.pdf')
+        },
+      content = function(file){
+        pdf(file,8,8)
+        phase1D.plot(data1D()$phase.data,data1D()$sim.data,data1D()$tits,download=TRUE)
+        dev.off()
+      })
+
+
     output$plot.single <- renderUI({
-        if(is.null(input$down.type) | is.null(per1D.data())) return()
+        if(is.null(input$down.type) | is.null(data1D())) return()
         if(input$down.type=='individual'){
             selectizeInput('per1D.name','Select periodogram',
-                  choices=per1D.data()$tits,multiple=FALSE)
+                  choices=data1D()$tits,multiple=FALSE)
         }
     })
 
     output$per1D.single <- downloadHandler(
         filename = function() {
-#            f1 <- gsub(" ",'_',Sys.time())
-#            f2 <- gsub(":",'-',f1)
-#            paste('periodogram1D_individual_', f2, '.pdf', sep='')
-            ind <- which(input$per1D.name==per1D.data()$tits)
-            paste0(per1D.data()$fs[ind],'.png')
+            ind <- which(input$per1D.name==data1D()$tits)
+            paste0(data1D()$fs[ind],'.png')
         },
       content = function(file) {
           #pdf(file,4,4)
           png(file,width=4,height=4,units="in", res=150)
         par(mar=c(5,5,1,1))
-        ind <- which(input$per1D.name==per1D.data()$tits)
-        per1D.plot(per1D.data()$per.data,per1D.data()$tits,per1D.data()$pers,per1D.data()$levels,per1D.data()$ylabs,download=TRUE,index=ind)
+        ind <- which(input$per1D.name==data1D()$tits)
+        per1D.plot(data1D()$per.data,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs,download=TRUE,index=ind)
         dev.off()
       })
 
     output$download.per1D.plot <- renderUI({
-        if(is.null(per1D.data())) return()
+        if(is.null(data1D())) return()
         if(input$down.type=='all'){
             downloadButton('per1D.figure', 'Download periodograms')
         }else{
@@ -963,18 +1004,24 @@ output$color <- renderUI({
         }
     })
 
+
+    output$download.phase1D.plot <- renderUI({
+        if(is.null(data1D())) return()
+        downloadButton('phase1D.figure', 'Download model fit and residual')
+    })
+
     output$help.per1D <- renderUI({
-        if(is.null(per1D.data())) return()
+        if(is.null(data1D())) return()
         helpText("The column names are 'P' and 'type:Observable:power', where 'name' is the periodogram type, 'P' is period, and 'power' is the periodogram power which could be logarithmic marginalized likelihood (logML; for MLP and BGLS) or Bayes factor (logBF; for BFP) or power (for other periodograms). ")
     })
 
-    output$per <- renderPlot({
-        if(is.null(per1D.data())) return()
-        per1D.plot(per1D.data()$per.data,per1D.data()$tits,per1D.data()$pers,per1D.data()$levels,per1D.data()$ylabs)
+    output$combined <- renderPlot({
+        if(is.null(data1D())) return()
+        combined.plot(data1D()$per.data,data1D()$phase.data,data1D()$sim.data,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs)
     })
 
-    output$plot.1Dper <- renderUI({
-        plotOutput("per", width = "750px", height = 400*ceiling(Nmax.plots/2))
+    output$plot.1Dcombined <- renderUI({
+        plotOutput("combined", width = "750px", height = 400*ceiling(Nmax.plots/2))
     })
 
   MP.data <- eventReactive(input$data.update,{

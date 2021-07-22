@@ -68,9 +68,11 @@ bgls <- function(t, y, err, ofac=1,fmax=1,fmin=NA,tspan=NULL,sampling='combined'
     power  <- log(constants) + exponents
     inds <- sort(power,decreasing=TRUE,index.return=TRUE)$ix
     ps <- 1/f[inds[1:5]]
+    Popt <- 1/f[inds[1]]
     power.opt <- power[inds[1:5]]
     ind <- which.max(power)
     omega.opt <- 2*pi*f[ind]
+
 ####optimized parameter
     Amin <- Bmin <- -2*(max(y)-min(y))
     Amax <- Bmax <- 2*(max(y)-min(y))
@@ -85,11 +87,13 @@ bgls <- function(t, y, err, ofac=1,fmax=1,fmin=NA,tspan=NULL,sampling='combined'
     par.fix <- list(omega=omega.opt,phi=phi)
     df <- list(t=t,y=y,dy=dy,par.fix=par.fix)
     out <- nls.lm(par = start,lower=par.low,upper=par.up,fn =gls.res,df=df,control=nls.lm.control(maxiter=500))
-    par.full <- c(as.list(coef(out)),par.fix)
+    par.opt <- as.list(coef(out))
+    par.full <- c(par.opt,par.fix)
     yp <- gls.model(t,par.full)
     res <- y-yp
+
     level <- log(c(10,100,1000))
-    return(list(data=data,P=1/f, power=power,res=res,ps=ps,power.opt=power.opt,sig.level=level,df=df))
+    return(list(data=data,P=1/f, Popt=Popt, par.opt=par.opt,power=power,res=res,ps=ps,power.opt=power.opt,sig.level=level,df=df))
 }
 
 ###based on Zechmeister09.pdf or ZK09 and the lsp function in the 'lomb' library
@@ -181,6 +185,7 @@ gls <- function(t, y, err,ofac=1, norm="Cumming",fmax=1,fmin=NA,tspan=NULL,sampl
 
 #####optimal parameters
 if(FALSE){
+#if(TRUE){
     Amin <- Bmin <- -2*(max(y)-min(y))
     Amax <- Bmax <- 2*(max(y)-min(y))
     Aini <- Bini <- (Amin+Amax)/2
@@ -207,7 +212,7 @@ if(FALSE){
     inds <- sort(power,decreasing=TRUE,index.return=TRUE)$ix
     ps <- 1/f[inds[1:5]]
     power.opt <- power[inds[1:5]]
-    return(list(data=data,P=1/f, power=power, pvalue=pp, sig.level=level,res=res,par.opt=par.opt,ps=ps,power.opt=power.opt,lnBFs=lnBFs,df=df))
+    return(list(data=data,P=1/f, power=power, Popt=1/f[inds[1]],pvalue=pp, sig.level=level,res=res,par.opt=par.opt,ps=ps,power.opt=power.opt,lnBFs=lnBFs))
 }
 
 ###generalized lomb-scargle periodogram with trend component
@@ -311,7 +316,7 @@ glst <- function(t, y, err,ofac=1, norm="Cumming",fmax=1,fmin=NA,tspan=NULL,samp
     inds <- sort(power,decreasing=TRUE,index.return=TRUE)$ix
     ps <- 1/f[inds[1:5]]
     power.opt <- power[inds[1:5]]
-    return(list(data=data,P=unit/f, power=power, pvalue=pp, sig.level=level,Popt=P[ind.max],ps=ps,res=res,power.opt=power.opt,ysig=yp,par.opt=par.opt,lnBFs=lnBFs))
+    return(list(data=data,P=unit/f, Popt=1/f[inds[1]],power=power, pvalue=pp, sig.level=level,Popt=P[ind.max],ps=ps,res=res,power.opt=power.opt,ysig=yp,par.opt=par.opt,lnBFs=lnBFs))
 }
 ####extra routine
 #####optimal parameters
@@ -454,7 +459,8 @@ lsp <- function(x, times = NULL, from = NULL, to = NULL, tspan=NULL, ofac = 1, a
     par.fix <- list(omega=omega,phi=phi)
     df <- list(t=t,y=y,par.fix=par.fix)
     out <- nls.lm(par = start,lower=par.low,upper=par.up,fn=lsp.res,df=df,control=nls.lm.control(maxiter=500))
-    par.full <- c(as.list(coef(out)),par.fix)
+    par.opt <- as.list(coef(out))
+    par.full <- c(par.opt,par.fix)
     yp <- lsp.model(t,par.full)
     res <- y-yp
 ####sort
@@ -465,9 +471,10 @@ lsp <- function(x, times = NULL, from = NULL, to = NULL, tspan=NULL, ofac = 1, a
 ###peaks
     inds <- sort(power,decreasing=TRUE,index.return=TRUE)$ix
     ps <- 1/freq[inds[1:10]]
+    Popt <- 1/freq[inds[1]]
     power.opt <- power[inds[1:10]]
 ###
-    sp.out <- list(data=data,P = P, power = power, ps=ps, power.opt=power.opt, alpha = alpha, sig.level = level, peak = PN.max, peak.at = peak.at, p.value = p,par=par.full,res=res,power.opt=power.opt)
+    sp.out <- list(P = P, power = power, ps=ps, power.opt=power.opt, alpha = alpha, sig.level = level, peak = PN.max, peak.at = peak.at, p.value = p,par.opt=par.opt,res=res,power.opt=power.opt,Popt=Popt)#df=df
     return(sp.out)
 }
 
@@ -488,7 +495,7 @@ lsp.res <- function(par,df){
     y-(A*cos(omega*t-phi)+B*sin(omega*t-phi))
 }
 
-gls.model <- function(t,par){
+gls.model <- function(t,par,par.fix){
     A <- par$A
     B <- par$B
     gamma <- par$gamma
@@ -502,10 +509,10 @@ gls.res <- function(par,df){
     dy <- df$dy
     A <- par$A
     B <- par$B
-    gamma <- par$gamma
-    phi <- df$par.fix$phi
-    omega <- df$par.fix$omega
-    (y-gls.model(t,par))/abs(dy)
+#    gamma <- par$gamma
+#    phi <- df$par.fix$phi
+#    omega <- df$par.fix$omega
+    (y-gls.model(t,c(par,df$par.fix)))/abs(dy)
 }
 
 glst.model <- function(t,par){

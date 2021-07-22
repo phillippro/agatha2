@@ -84,31 +84,34 @@ shinyUI(fluidPage(
                          uiOutput('nar'),
                          uiOutput('nma'),
                          uiOutput('Inds'),
+                         uiOutput('signal'),
                          sliderInput("prange","Period range in base-10 log scale",min = -2,max = 6,value = c(0.1,4),step=0.1),
                          sliderInput("ofac", "Oversampling factor", min = 0, max = 10, value=1,step=0.2),
-                         radioButtons("signal.type",'Signal type',c("Circular"="circular","Keplerian"='kepler')),
+#                         radioButtons("signal.type",'Signal type',c("Circular"="circular","Keplerian"='kepler','Stochastic'='stochastic')),
                                         # "Empty inputs" - they will be updated after the data is uploaded
                          helpText("If the BFP is selected, only 'RV' is available for the following observable selection."),
                          uiOutput("var"),
 #                         helpText("If the BFP is selected, the periodograms are only calculated for RVs. The meaning of variables are as follows: 'all'--all observables, 'RVs'--RVs, 'Proxies'-- noise proxies,'Instrument:Variable'--individual observables"),
                                         #uiOutput('helpvar'),
                                         #uiOutput('tv'),
-                         checkboxInput('sequence','Find additional signals sequentially',value=TRUE),
+                         uiOutput('sequential'),
                          uiOutput('per.type.seq'),
                          uiOutput('Nsig.max'),
-                         actionButton('plot1D', 'plot periodograms'),
+                         actionButton('plot1D', 'Calculate periodograms'),
                          radioButtons('down.type','Download plots',
                                       choices=c('All plots'='all','Individual plot'='individual'),  selected='individual'),
 #                         uiOutput('select.type'),
                          uiOutput('plot.single'),
                          uiOutput('download.per1D.plot'),
-                         helpText("The users are encouraged to make their own periodogram figures, particularly the BFP, by downloading and using the relevant data."),
-                         uiOutput('download.per1D.data')
-#                         br(),
+                         uiOutput('download.phase1D.plot'),
+                         helpText("The users are encouraged to make their own periodogram figures and phase plots by downloading and using the relevant data."),
+                         uiOutput('download.per1D.data'),
+                         uiOutput('download.phase1D.data'),
+                         uiOutput('download.sim1D.data'),
+                         uiOutput('download.par1D.data')
                      ),
                      mainPanel(
-                         uiOutput("plot.1Dper")
-#                         uiOutput("mp")
+                         uiOutput("plot.1Dcombined"),
                      )
                  )
                  ),

@@ -12,12 +12,12 @@ for(jj in 2:Nsig.max){
         rr <- rv.ls$res
     }
     if(per.type.seq=='BFP'){
-        rv.ls <- BFP(tab[,1],rr,tab[,3],Nma=Nma,Nar=Nar,Indices=Indices,ofac=ofac,model.type='man',fmin=frange[1],fmax=frange[2],quantify=quantify,renew=renew)
+        rv.ls <- BFP(tab[,1],rr,tab[,3],Nma=Nma,Nar=Nar,Indices=Indices,ofac=ofac,model.type='man',fmin=frange[1],fmax=frange[2],quantify=quantify,renew=renew,progress=progress,noise.only=noise.only)
         ylab <- 'ln(BF)'
         name <- 'logBF'
     }
     if(per.type.seq=='MLP'){
-        rv.ls <- MLP(tab[,1],rr,tab[,3],Nma=Nma,ofac=ofac,mar.type='part',model.type='man',fmin=frange[1],fmax=frange[2],opt.par=NULL,Inds=Inds,Indices=Indices,MLP.type=MLP.type)
+        rv.ls <- MLP(tab[,1],rr,tab[,3],Nma=Nma,Nar=Nar,ofac=ofac,mar.type='part',model.type='man',fmin=frange[1],fmax=frange[2],opt.par=NULL,Indices=Indices,MLP.type=MLP.type,noise.only=noise.only)
         ylab <- expression('log(ML/'*ML[max]*')')
         name <- 'logML'
     }
@@ -66,15 +66,19 @@ for(jj in 2:Nsig.max){
     cnames <- c(cnames,paste0(per.type.seq,jj,'signal:',ypar,':',name))
     ylabs <- c(ylabs,ylab)
 ###modify the periodogram output for Keplerian fit
-    if(SigType=='kepler'){
-        tmp <- sigfit(per=rv.ls,SigType=SigType)
-        rv.ls <- tmp$per
-    }
-#    cat('ParOpt=',rv.ls$par.opt,'\n')
-    cat('head(rv.ls$res)=',head(rv.ls$res),'\n')
-    cat('sd(rv.ls$res)=',sd(rv.ls$res),'\n')
-#    cat('head(rv.ls$res)=',head(rv.ls$res),'\n')
-    cat('Popt=',rv.ls$Popt,'\n')
+    tmp <- sigfit(per=rv.ls,data=cbind(tab[,1],rr,tab[,3]),SigType=SigType)
+    rv.ls <- tmp$per
+
+    pp <- cbind(tmp$t,tmp$y,tmp$ysig0)
+    colnames(pp) <- paste0(c('t','y','ysig'),'_sig',jj)
+    phase.data <- cbind(phase.data,pp)
+
+    qq <- cbind(tmp$tsim,tmp$ysim,tmp$ysim0)
+    colnames(qq) <- paste0(c('tsim','ysim','ysim0'),'_sig',jj)
+    sim.data <- cbind(sim.data,qq)
+    save(list=ls(all=TRUE),file='test2.Robj')
+    par.data <- addpar(par.data,tmp$ParSig,jj)
+###    phase.plot(tmp)
 }
 
-
+cat('Finished!\n')
