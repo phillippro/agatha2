@@ -13,13 +13,15 @@ data.files <- list.files(path='data',full.name=FALSE)
 tab <- read.table('data/ChallengeDataSet1_HARPS.dat',header=TRUE)
 frange <- 1/10^c(4,0.1)
 #rv.ls <- glst(t=tab[,1],y=tab[,2],err=tab[,3],ofac=1,fmin=frange[1],fmax=frange[2])
-Indices <- scale.proxy(tab[,4:ncol(tab),drop=FALSE])
-#Indices <- scale.proxy(tab[,6,drop=FALSE])
+#Indices <- scale.proxy(tab[,4:ncol(tab),drop=FALSE])
+Indices <- scale.proxy(tab[,6,drop=FALSE])
 #Indices <- NULL
 Nar <- 0
-Nma <- 0
+Nma <- 1
 ofac <- 1
-per.type <- per.type.seq <- 'GLST'
+per.type <- per.type.seq <- 'MLP'
+#basis <- 'linear'
+basis <- 'natural'
 SigType <- 'kepler'
 #SigType <- 'circular'
 #SigType <- 'stochastic'
@@ -28,8 +30,6 @@ SigType <- 'circular'
 }
 phase.data <- sim.data <- c()
 #SigType <- 'circular'
-#basis <- 'linear'
-basis <- 'natural'
 if(SigType=='stochastic'){
     noise.only <- TRUE
     fold <- FALSE

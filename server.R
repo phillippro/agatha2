@@ -11,6 +11,8 @@ count0 <- 0
 instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
 tol <- 1e-16
 progress <- TRUE
+#basis <- 'linear'
+basis <- 'natural'
 #trend <- FALSE
 ##load functions
 source('periodoframe.R')

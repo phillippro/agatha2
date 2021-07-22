@@ -62,7 +62,7 @@ addpar <- function(par.old,par.new,nsig){
             n1[1:3] <- paste0(n0[1:3],nsig)
             names(par.new) <- n1
             Npar.noise <- length(par.new)-3
-        }else if(any(grepl('omega',n0))){
+        }else if(any(grepl('omega|Tc',n0))){
             n1[1:5] <- gsub('1$',nsig,n0[1:5])
             names(par.new) <- n1
             Npar.noise <- length(par.new)-5
@@ -77,6 +77,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
     for(k in 1:length(var)){
         assign(var[k],per.par[[var[k]]])
     }
+
     Nmas <- unlist(Nmas)
     Nars <- unlist(Nars)
     per.data <- c()
@@ -268,12 +269,17 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
         cnames <- c(cnames,paste0(pers[i],'1signal:',gsub(' .+','',ypar),':',name))
 
 ####calculate the Keplerian fit
-        tmp <- sigfit(per=rv.ls,data=data,SigType=SigType)
+
+        tmp <- sigfit(per=rv.ls,data=data,SigType=SigType,basis=basis)
 ###update the output from periodogram
         rv.ls <- tmp$per
 
         pp <- cbind(tmp$t,tmp$y,tmp$ysig0)
+
         colnames(pp) <- paste0(c('t','y','ysig'),'_sig1')
+        save(list=ls(all=TRUE),file='test0.Robj')
+        cat('colnames(pp)=',colnames(pp),'\n')
+        cat('colnames(phase.data)=',colnames(phase.data),'\n')
         phase.data <- cbind(phase.data,pp)
 
         qq <- cbind(tmp$tsim,tmp$ysim,tmp$ysim0)
@@ -366,6 +372,7 @@ sigfit <- function(per,data,SigType='circular',basis='natural',fold=TRUE){
         if(!any(names(df)=='Nma')) df$Nma <- 0
         if(!any(names(df)=='NI')) df$NI <- 0
         if(!any(names(df)=='Nar')) df$Nar <- 0
+        save(list=ls(all=TRUE),file='test5.Robj')
         fit <- KeplerFit(per,basis=basis)
         sig <- KeplerSig(fit$ParKep,df,basis=basis)
         sim <- KeplerSim(fit$ParKep,df,tsim,basis=basis)#with trend
@@ -418,7 +425,6 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
             par(mfrow=c(2,2),mar=c(5,5,3,1),cex.lab=1.2,cex.main=0.8,cex.axis=1.2,cex=1)
         }
     }
-    save(list=ls(all=TRUE),file='test1.Robj')
     ylab <- unlist(strsplit(tits[1],';'))[3]
     if(!is.null(index)){
         inds <- index
