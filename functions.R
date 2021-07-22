@@ -67,8 +67,8 @@ addpar <- function(par.old,par.new,nsig){
             names(par.new) <- n1
             Npar.noise <- length(par.new)-5
         }
+        par <- c(par.old[-(length(par.old)-(Npar.noise:1)+1)],par.new)
     }
-    par <- c(par.old[-(length(par.old)-(Npar.noise:1)+1)],par.new)
     return(par)
 }
 
@@ -87,6 +87,11 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
     fs <- c()
     pars <- list()
     kk <- 1
+    if(SigType=='stochastic' & per.type=='BFP'){
+        noise.only <- TRUE
+    }else{
+        noise.only <- FALSE
+    }
     MLP.type <- 'sub'
     for(j1 in 1:length(vars)){
         for(j2 in 1:length(per.type)){
@@ -179,11 +184,6 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
                 }
 #                tmp <- c(Nma=Nma,Nar=Nar,model.type='man',Indices=NULL,
 #                                                      ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify)
-                if(SigType=='stochastic'){
-                    noise.only <- TRUE
-                }else{
-                    noise.only <- FALSE
-                }
                 rv.ls <- BFP(t=tab[,1],y=y,dy=dy, Nma=Nma,Nar=Nar,model.type='man',Indices=Indices, ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify, renew=renew,noise.only=noise.only)
 
 ###renew: every chi-square minimization start from the initial parameter values
@@ -292,7 +292,6 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data){
             }
         }
 ###attach common data
-        save(list=ls(all=TRUE),file='test0.Robj')
         phase.attach <- cbind(tab[,1],y,dy,tmp$res)
         colnames(phase.attach) <- c('t0','y0','ey0','res')
         sim.attach <- t(t(tmp$tsim0))
@@ -336,7 +335,6 @@ sigfit <- function(per,data,SigType='circular',basis='natural',fold=TRUE){
     if(!any(names(per)=='ysims')) per$ysims <- ysims <- 0
     popt <- per$Popt
     save.data <- FALSE
-        save(list=ls(all=TRUE),file='test3.Robj')
 
     if(SigType=='circular'){
         ysim.sig <- par.opt['A']*cos(2*pi/popt*tsim)+par.opt['B']*sin(2*pi/popt*tsim)
@@ -408,7 +406,6 @@ sigfit <- function(per,data,SigType='circular',basis='natural',fold=TRUE){
         tsims <- tsim
         ysims <- ysim.sig
     }
-#    save(list=ls(all=TRUE),file='test2.Robj')
     return(list(per=per,t=ts,y=as.numeric(ysig),ey=data[,3],res=as.numeric(res),ysig0=ysig0,tsim0=tsim0,ysim0=ysim0,tsim=tsims,ysim=ysims,ParSig=ParSig))
 }
 
@@ -449,7 +446,6 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
         arrows(t,y-ey,t,y+ey,length=0.03,angle=90,code=3,col=tcol('black',50))
     }
 ###total fit
-    save(list=ls(all=TRUE),file='test.Robj')
     t <- phase.data[,'t0']
     ey <- phase.data[,'ey0']
     res <- phase.data[,'res']

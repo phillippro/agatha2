@@ -76,7 +76,6 @@ for(jj in 2:Nsig.max){
     qq <- cbind(tmp$tsim,tmp$ysim,tmp$ysim0)
     colnames(qq) <- paste0(c('tsim','ysim','ysim0'),'_sig',jj)
     sim.data <- cbind(sim.data,qq)
-    save(list=ls(all=TRUE),file='test2.Robj')
     par.data <- addpar(par.data,tmp$ParSig,jj)
 ###    phase.plot(tmp)
 }
