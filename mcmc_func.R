@@ -24,7 +24,8 @@ tol1 <- 1e-16
 #Naming system: Keplerian parameters: {{per},{K},{e},{omega},{Mo}}; trend pars: {a, b}; noise pars (white noise: {s}, Gaussian process red noise: {sigma.white,l}, ARMA red noise:{{phi},alpha,{w},beta}>)
 ##kepler solver
 kep.mv <- function(m,e){
-    tol = 1e-6
+#    tol = 1e-6
+    tol = tol1
     m <- m%%(2*pi)
     E0 <- m+e*sin(m)+e^2*sin(m)*cos(m)+0.5*e^3*sin(m)*(3*cos(m)^2-1)#initial value
     Ntt <- 1e4
@@ -42,15 +43,36 @@ kep.mv <- function(m,e){
     }
     return(E1%%(2*pi))
 }
+deg2hdms <- function(RAdeg,DEdeg){
+    val <- RAdeg/360*24#hour
+    RAh <- floor(val)
+    RAm <- floor((val%%1)*60)
+    RAs <- (((val%%1)*60)%%1)*60
+    sig <- sign(DEdeg)
+    DEdeg <- abs(DEdeg)
+    DEd <- sig*floor(DEdeg)
+    DEm <- floor((DEdeg%%1)*60)
+    DEs <- (((DEdeg%%1)*60)%%1)*60
+    return(cbind(RAh,RAm,RAs,DEd,DEm,DEs))
+}
+
+hdms2deg <- function(rah,ram,ras,ded,dem,des){
+    RA.deg <- (rah+ram/60+ras/3600)/24*360
+    DEC.deg <- sign(ded)*(abs(ded)+dem/60+des/3600)
+    RA.rad <- RA.deg/180*pi
+    DEC.rad <- DEC.deg/180*pi
+    cbind(RA.deg,DEC.deg,RA.rad,DEC.rad)
+}
 kep.mt <- function(m,e){
-    tol = 1e-8
+#    tol = 1e-8
+    tol <- tol1
     E <- rep(NA,length(m))
     Ntt <- 1000
     for(j in 1:length(m)){
         E0 <- m[j]
         for(k in 1:Ntt){
             E1 = E0-(E0-e*sin(E0)-m[j])/(sqrt((1-e*cos(E0))^2-(E0-e*sin(E0)-m[j])*(e*sin(E0))))
-            if(abs(E1-E0)<tol) break()
+            if(abs(E1-E0pp)<tol) break()
             if(j==Ntt) cat('Keplerian solver does not converge!\n')
             E0 <- E1
         }
@@ -79,6 +101,7 @@ getM0 <- function(e,omega,P,T,T0,type='primary'){
 }
 kep.mt2 <- function(m,e){
     tol = 1e-8
+#    tol <- tol1
     E0 <- m
     Ntt <- 1e3
     for(k in 1:Ntt){
@@ -109,7 +132,7 @@ KeplerStart3 <- function(m,e){
     t33 <- cos(m)
     return(m+(-1/2*t35+e+(t34+3/2*t33*t35)*t33)*sin(m))
 }
-kep.murison2 <- function(m,e,tol=1e-6){
+kep.murison2 <- function(m,e,tol=tol1){
     Mnorm <- m%%(2*pi)
     E0 <- KeplerStart3(Mnorm,e)
     Ntry <- 1000
@@ -144,24 +167,30 @@ divide.pars <- function(pars){
     return(list(kep=ind.kep,trend=ind.trend,noise=ind.noise))
 }
 
-assign.names <- function(par.vector,Np,p=0,q=0,n=0,basis='natural'){
+assign.names <- function(par.vector,Np,p=0,q=0,n=0,bases='natural'){
     nams <- c()
     #names for keplerian part
     if(Np>0){
-        if(basis=='natural'){
-            if(prior.type=='e0'){
-                nams.kep <- c('per','K','omega')
-            }else{
-                nams.kep <- c('per','K','e','omega','Mo')
-            }
-        }else if(basis=='linear1'){
-            if(prior.type=='e0'){
-                nams.kep <- c('per','lnK','Tc')
-            }else{
-                nams.kep <- c('per','lnK','sqresinw','sqrecosw','Tc')
-            }
-        }
         for(j in 1:Np){
+            if(bases[j]=='natural'){
+                if(prior.type=='e0'){
+                    nams.kep <- c('per','K','omega')
+                }else{
+                    nams.kep <- c('per','K','e','omega','Mo')
+                }
+            }else if(bases[j]=='linear1'){
+                if(prior.type=='e0'){
+                    nams.kep <- c('per','lnK','Tc')
+                }else{
+                    nams.kep <- c('per','lnK','sqresinw','sqrecosw','Tc')
+                }
+            }else if(bases[j]=='linear2'){
+                if(prior.type=='e0'){
+                    nams.kep <- c('dP','lnK','dTc')
+                }else{
+                    nams.kep <- c('dP','lnK','sqresinw','sqrecosw','dTc')
+                }
+            }
             nams <- c(nams,paste(nams.kep,j,sep=''))
         }
     }
@@ -169,7 +198,7 @@ assign.names <- function(par.vector,Np,p=0,q=0,n=0,basis='natural'){
         if(i1==1 & par.global=='trend'){
             nams <- c(nams,paste0('a',i1,1:Npoly))
         }
-        nams <- c(nams,paste0('b',i1))
+        if(offset) nams <- c(nams,paste0('b',i1))
         nams <- c(nams,paste0('s',i1))
         if(p[i1]>0){
             nams.ar <- 'phi'
@@ -199,7 +228,7 @@ assign.names <- function(par.vector,Np,p=0,q=0,n=0,basis='natural'){
     return(par.vector)
 }
 plot.labels.simple <- function(par.name){
-    pats <- c('per','K','e','omega','Mo','a','b','beta','alpha','w','m','tau','s','c','lnK','sqrecosw','sqresinw','Tc')
+    pats <- c('per','K','e','omega','Mo','a','b','beta','alpha','w','m','tau','s','c','lnK','sqrecosw','sqresinw','Tc','dP','dTc')
     new.name <- par.name
     for(pat in pats){
         ind <- grep(paste0('^',pat),par.name)
@@ -303,9 +332,48 @@ cal.trend <- function(a,b,t){
     }
     return(trend)
 }
+extract.par <- function(pars.kep,Np=1,bases='natural'){
+    Ps <- Ks <- es <- Mos <- omegas <- c()
+    for(k in 1:Np){
+        basis <- bases[k]
+        if(basis=='natural'){
+            P  <-  exp(pars.kep[grep(paste0('^per',k),names(pars.kep))])
+            K <- pars.kep[grep(paste0('^K',k),names(pars.kep))]
+            e <- pars.kep[grep(paste0('^e',k),names(pars.kep))]
+            Mo <- pars.kep[grep(paste0('^Mo',k),names(pars.kep))]
+            omega  <-  pars.kep[grep(paste0('^omega',k),names(pars.kep))]
+        }else{
+            if(basis=='linear2'){
+                dP = pars.kep[grep(paste0('^dP',k),names(pars.kep))]*alpha.dP
+                P <- dP+Ptransit[k]
+                dTc = pars.kep[grep('^dTc([[:digit:]]{1})',names(pars.kep))]*alpha.dTc
+                Tc1 <- dTc+Tc[k]
+            }else if(basis=='linear1'){
+                P  <-  exp(pars.kep[grep(paste0('^per',k),names(pars.kep))])
+                Tc1  <-  pars.kep[grep(paste0('^Tc',k),names(pars.kep))]
+            }
+            K <- exp(pars.kep[grep(paste0('^lnK',k),names(pars.kep))])
+            sw  <-  pars.kep[grep(paste0('^sqresinw',k),names(pars.kep))]
+            cw  <-  pars.kep[grep(paste0('^sqrecosw',k),names(pars.kep))]
+            e <- sw^2+cw^2
+            if(cw!=0){
+                omega <- atan(sw/cw)
+            }else{
+                omega <- atan(sw/1e-3)
+            }
+            Mo <- getM0(e=e,omega=omega,P=P,T=Tc1,T0=tmin,type='primary')
+        }
+        Ps <- c(Ps,P)
+        Ks <- c(Ks,K)
+        es <- c(es,e)
+        omegas <- c(omegas,omega)
+        Mos <- c(Mos,Mo)
+    }
+    return(list(P=Ps,K=Ks,e=es,Mo=Mos,omega=omegas))
+}
 ####functions for mcmc algorithms for detection of keplerian signal in RV data
 ####Keplerian model with 1 planet
-RV.kepler <- function(pars.kep,tt=NA,prior.kep=prior.type,period.kep=period.par,injection=FALSE,kep.only=FALSE,noise.only=FALSE){
+RV.kepler <- function(pars.kep,tt=NA,prior.kep=prior.type,period.kep=period.par,injection=FALSE,kep.only=FALSE,noise.only=FALSE,bases='natural'){
     if(all(is.na(tt))){
         sim.kep <- FALSE
         Nrep <- length(ins)
@@ -316,61 +384,25 @@ RV.kepler <- function(pars.kep,tt=NA,prior.kep=prior.type,period.kep=period.par,
     if(!sim.kep){
         tt <- trv.all
     }
-    Np.kep <- length(grep('per',names(pars.kep)))
+    Np.kep <- length(grep('^dP|^per',names(pars.kep)))
     tt <- tt-tmin
-    if(Np.kep>0 & !noise.only){
-        Ps = exp(pars.kep[grep('^per([[:digit:]]{1})',names(pars.kep))])
-        ##        pers[ind.transit] <- log(pers[ind.transit])
-        if(basis=='natural'){
-            Ks = pars.kep[grep('^K([[:digit:]]{1})',names(pars.kep))]
-        }else if(basis=='linear1'){
-            Ks = exp(pars.kep[grep('^lnK([[:digit:]]{1})',names(pars.kep))])
-        }
-        if(prior.kep!='e0'){
-            es = pars.kep[grep('^e([[:digit:]]{1})',names(pars.kep))]
-            Mos = pars.kep[grep('^Mo([[:digit:]]{1})',names(pars.kep))]
-        }
-        omegas = pars.kep[grep('^omega([[:digit:]]{1})',names(pars.kep))]
-        sqresin = pars.kep[grep('^sqresinw([[:digit:]]{1})',names(pars.kep))]
-        sqrecos = pars.kep[grep('^sqrecosw([[:digit:]]{1})',names(pars.kep))]
-        Tc = pars.kep[grep('^Tc([[:digit:]]{1})',names(pars.kep))]
-
+    if(Np.kep>0){
+        pp <- extract.par(pars.kep,Np=Np.kep,bases=bases)
         dVr.p <- rep(0,length(tt))
         for(h in 1:Np.kep){
-            K <- Ks[h]
-            P <- Ps[h]
-            if(basis=='natural'){
-                omega <- omegas[h]
-                if(prior.kep!='e0'){
-                    e <- es[h]
-                    Mo <- Mos[h]
-                    m <- (Mo+2*pi*tt/P)%%(2*pi)#mean anomaly
-                    E <- kep.mt2(m,e)
-                    T <- 2*atan(sqrt((1+e)/(1-e))*tan(E/2))
-                    dVr.p <- dVr.p+K*(cos(omega+T)+e*cos(omega))
-                }else{
-                    Mo <- Mos[h]
-                    m <- (Mo+2*pi*tt/P)%%(2*pi)#mean anomaly
-                    dVr.p <- dVr.p+K*cos(m)
-                }
-            }else if(basis=='linear1'){
-                if(prior.kep!='e0'){
-                    e <- sqresin[h]^2+sqrecos[h]^2
-                    if(sqrecos[h]!=0){
-                        omega <- atan(sqresin[h]/sqrecos[h])
-                    }else{
-                        omega <- atan(sqresin[h]/1e-3)
-                    }
-                    Mo <- getM0(e=e,omega=omega,P=P,T=Tc[h],T0=tmin,type='primary')
-                    m <- (Mo+2*pi*tt/P)%%(2*pi)#mean anomaly
-                    E <- kep.mt2(m,e)
-                    T <- 2*atan(sqrt((1+e)/(1-e))*tan(E/2))#true anomaly
-                    dVr.p <- dVr.p+K*(cos(omega+T)+e*cos(omega))
-                }else{
-                    Mo <- (tmin-Tc)*2*pi/P
-                    m <- (Mo+2*pi*tt/P)%%(2*pi)#mean anomaly
-                    dVr.p <- dVr.p+K*cos(m)
-                }
+            ##get parameters
+            P <- pp$P[h]
+            K <- pp$K[h]
+            e <- pp$e[h]
+            omega <- pp$omega[h]
+            Mo <- pp$Mo[h]
+            m <- (Mo+2*pi*tt/P)%%(2*pi)#mean anomaly
+            if(prior.kep!='e0'){
+                E <- kep.mt2(m,e)
+                T <- 2*atan(sqrt((1+e)/(1-e))*tan(E/2))
+                dVr.p <- dVr.p+K*(cos(omega+T)+e*cos(omega))
+            }else{
+                dVr.p <- dVr.p+K*cos(m)
             }
         }
     }else{
@@ -399,9 +431,14 @@ RV.kepler <- function(pars.kep,tt=NA,prior.kep=prior.type,period.kep=period.par,
             }else{
                 at <- 0
             }
-#            cat('at=',at,'\n')
-#            cat('b=',pars.kep[paste0('b',j2)],'\n')
-            trend <- cal.trend(a=at,b=pars.kep[paste0('b',j2)],t=tt/time.unit)#
+            b <- 0
+            if(offset){
+                b <- pars.kep[paste0('b',j2)]
+                if(j2>1 & target=='GJ559A'){
+#                    b <- b+pars.kep['b1']
+                }
+            }
+            trend <- cal.trend(a=at,b=b,t=tt/time.unit)#
                                         #        cat('range(trend)=',range(trend),'\n')
 #            cat('range(trend)=',range(trend),'\n')
             dVr.kep[[ins[j2]]] <- dVr.kep[[ins[j2]]]+trend
@@ -422,6 +459,106 @@ RV.kepler <- function(pars.kep,tt=NA,prior.kep=prior.type,period.kep=period.par,
     }
     return(dVr.kep)
 }
+
+RVsig <- function(pars.kep,tt=NA,prior.kep=prior.type,period.kep=period.par,injection=FALSE,kep.only=FALSE,noise.only=FALSE,bases='natural'){
+#    if(!is.null(out)){
+#        ins <- out$ins
+#        trv.all <- out$trv.all
+#        tmin <-  out$tmin
+#        nqp <- out$nqp
+#    }
+#
+    if(all(is.na(tt))){
+        sim.kep <- FALSE
+        Nrep <- length(ins)
+    }else{
+        sim.kep <- TRUE
+        Nrep <- 1
+    }
+    if(!sim.kep){
+        tt <- trv.all
+    }
+    ysig <- ytrend <- yproxy <- 0
+    Np.kep <- length(grep('^dP|^per',names(pars.kep)))
+    tt <- tt-tmin
+    if(Np.kep>0){
+        pp <- extract.par(pars.kep,Np=Np.kep,bases=bases)
+        dVr.p <- rep(0,length(tt))
+        for(h in 1:Np.kep){
+            ##get parameters
+            P <- pp$P[h]
+            K <- pp$K[h]
+            e <- pp$e[h]
+            omega <- pp$omega[h]
+            Mo <- pp$Mo[h]
+            m <- (Mo+2*pi*tt/P)%%(2*pi)#mean anomaly
+            if(prior.kep!='e0'){
+                E <- kep.mt2(m,e)
+                T <- 2*atan(sqrt((1+e)/(1-e))*tan(E/2))
+                dVr.p <- dVr.p+K*(cos(omega+T)+e*cos(omega))
+            }else{
+                dVr.p <- dVr.p+K*cos(m)
+            }
+        }
+    }else{
+        dVr.p <- rep(0,length(tt))
+    }
+    ind.na <- which(is.na(tt))
+    if(length(ind.na)>0){
+        dVr.p[ind.na] <- NA
+    }
+    ysig <- dVr.p
+
+###calculate noise component
+    dVr.kep <- list()
+    for(j2 in 1:Nrep){
+###assign parameters and data
+        nqp <- out[[ins[j2]]]$noise$nqp
+        if(!sim.kep){
+            dVr.kep[[ins[j2]]] <- dVr.p[out[[ins[j2]]]$index]
+            tt <- out[[ins[j2]]]$RV[,1]-tmin
+        }else{
+            dVr.kep <- dVr.p
+        }
+        if(!kep.only){
+            ind <- grep('^a1',names(pars.kep))
+            if(length(ind)>0){
+                at <- pars.kep[ind]
+            }else{
+                at <- 0
+            }
+            b <- 0
+            if(offset){
+                b <- pars.kep[paste0('b',j2)]
+                if(j2>1 & target=='GJ559A'){
+#                    b <- b+pars.kep['b1']
+                }
+            }
+#            save(list=ls(all=TRUE),file='test2.Robj')
+
+            ytrend <- trend <- cal.trend(a=at,b=b,t=tt/time.unit)#
+                                        #        cat('range(trend)=',range(trend),'\n')
+#            cat('range(trend)=',range(trend),'\n')
+            dVr.kep[[ins[j2]]] <- dVr.kep[[ins[j2]]]+trend
+            if(nqp[1]>0){
+                ind <- grep(paste0('c'),1:nqp[1])
+                if(length(ind)>0){
+                    cs <- par.kep[ind]
+                    proxies <-out[[j2]]$noise$proxy.opt
+                    if(length(cs)>1){
+                        tmp <- rowSums(t(cs*t(proxies)))
+                    }else{
+                        tmp <- cs*proxies
+                    }
+                    dVr.kep[[ins[j2]]] <- dVr.kep[[ins[j2]]] + tmp
+                    yproxy <- tmp
+                }
+            }
+        }
+    }
+    return(list(y=dVr.kep,ysig=ysig,ytrend=ytrend,yproxy=yproxy))
+}
+
 ####red noise kernel
 ker.red <- function(x,y,sigma.red,l,Pgp=1,lp=1,type='abs'){
     if(type=='abs'){
@@ -579,6 +716,38 @@ rednoise.cov <- function(sigma.red,l,tt=trv,tol=1e-12,Pgp=1,lp=1,type='abs'){
 ##arma noise model
 arma <- function(t,ymodel,ydata,pars,p,q,ind.set=1,ARMAtype='abs'){
     dv.arma <- 0
+    dVr.ar <- 0
+    dVr.ma <- 0
+    ##AR(p.ar) model
+    if(p>0){
+        phi <- pars[paste0('phi',ind.set,1:p)]
+        alpha <- pars[paste0('alpha',ind.set)]
+        for(j in 1:p){
+            ar <- phi[j]*exp((t[-(length(t)+1-(1:j))]-t[-(1:j)])/exp(alpha))*ydata[-(length(t)+1-(1:j))]
+            ar1 <- phi[j]*exp(-abs(t[j+(1:j)]-t[(1:j)])/exp(alpha))*ydata[j+(1:j)]#backward propagation for initial j epochs
+#            dVr.ar <- dVr.ar + c(rep(ar[1],j),ar)
+            dVr.ar <- dVr.ar + c(ar1,ar)
+        }
+        dv.arma <- dv.arma + dVr.ar
+    }
+    ##MA(q) model
+    if(q>0){
+        w <- pars[paste0('w',ind.set,1:q)]
+        beta <- pars[paste0('beta',ind.set)]
+        res <- ydata-ymodel
+        for(j in 1:q){
+            ma <- w[j]*exp(-abs(t[-(length(t)+1-(1:j))]-t[-(1:j)])/exp(beta))*res[-(length(t)+1-(1:j))]
+            ma1 <- w[j]*exp(-abs(t[j+(1:j)]-t[(1:j)])/exp(beta))*res[j+(1:j)]#backward propagation for initial j epochs
+#            dVr.ma <- dVr.ma + c(rep(ma[1],j),ma)
+            dVr.ma <- dVr.ma + c(ma1,ma)
+        }
+        dv.arma <- dv.arma + dVr.ma
+    }
+    return(list(arma=dv.arma,ar=dVr.ar,ma=dVr.ma))
+}
+##arma noise model backup
+arma.bkp <- function(t,ymodel,ydata,pars,p,q,ind.set=1,ARMAtype='abs'){
+    dv.arma <- 0
     ##AR(p.ar) model
     if(p>0){
         dVr.ar <- 0
@@ -676,12 +845,14 @@ matrix.power <- function(mat,power){
     return(mat)
 }
 #likelihood
-loglikelihood <- function(pars){
-    RV.kep  <-  try(RV.kepler(pars.kep=pars),TRUE)
+loglikelihood <- function(pars,bases='natural'){
+#    RV.kep  <-  try(RV.kepler(pars.kep=pars,bases=bases),TRUE)
+    RV.kep  <-  RV.kepler(pars.kep=pars,bases=bases)
 #    if(class(RV.kep)=='try-error') RV.kep <- RV.kepler(pars.kep=startvalue)
     logLike <- 0
+#    ins <- out$ins
     for(k3 in 1:length(ins)){
-        trv <-out[[ins[k3]]]$RV[,1]
+        trv <- out[[ins[k3]]]$RV[,1]
         rv.data <- out[[ins[k3]]]$RV[,2]
         erv <- out[[ins[k3]]]$RV[,3]
         rv.model <- rv.kep <- RV.kep[[ins[k3]]]
@@ -691,7 +862,7 @@ loglikelihood <- function(pars){
 #        cat('range(rv.data)=',range(rv.data),'\n')
 #        cat('range(rv.kep)=',range(rv.kep),'\n')
         if(nqp[2]>0 | nqp[3]>0){
-            rv.arma <- arma(t=trv,ymodel=rv.kep,ydata=rv.data,pars=pars,ind.set=k3,p=nqp[3],q=nqp[2])
+            rv.arma <- arma(t=trv,ymodel=rv.kep,ydata=rv.data,pars=pars,ind.set=k3,p=nqp[3],q=nqp[2])$arma
 #            cat('range(rv.arma)=',range(rv.arma),'\n')
             rv.model <- rv.model +rv.arma
         }
@@ -703,20 +874,43 @@ loglikelihood <- function(pars){
     return(logLike)
 }
 
-cal.residual <- function(pars){
-    RV.all = RV.kepler(pars.kep=pars)
-    RV.kep = RV.kepler(pars.kep=pars,kep.only=TRUE)
+calc.res <- function(pars,bases='natural'){
+    RV.kep  <-  RV.kepler(pars.kep=pars,bases=bases)
+    res <- list()
+    for(k3 in 1:length(ins)){
+        trv <- out[[ins[k3]]]$RV[,1]
+        rv.data <- out[[ins[k3]]]$RV[,2]
+        erv <- out[[ins[k3]]]$RV[,3]
+        rv.model <- rv.kep <- RV.kep[[ins[k3]]]
+        nqp <- out[[ins[k3]]]$noise$nqp
+        s <- pars[paste0('s',k3)]
+#        cat('nqp=',nqp,'\n')
+#        cat('range(rv.data)=',range(rv.data),'\n')
+#        cat('range(rv.kep)=',range(rv.kep),'\n')
+        if(nqp[2]>0 | nqp[3]>0){
+            rv.arma <- arma(t=trv,ymodel=rv.kep,ydata=rv.data,pars=pars,ind.set=k3,p=nqp[3],q=nqp[2])$arma
+#            cat('range(rv.arma)=',range(rv.arma),'\n')
+            rv.model <- rv.model +rv.arma
+        }
+        res[[ins]] <- rv.data-rv.model
+    }
+  res
+}
+
+cal.residual <- function(pars,bases=rep('natural',10)){
+    RV.all = RV.kepler(pars.kep=pars,bases=bases)
+    RV.kep = RV.kepler(pars.kep=pars,kep.only=TRUE,bases=bases)
     trend <- arma <- all <- noise <- signal <- residual.all <- residual.noise <- residual.sig <- list()
     for(k3 in 1:length(ins)){
         trv <-out[[ins[k3]]]$RV[,1]
         rv.data <- out[[ins[k3]]]$RV[,2]
         erv <- out[[ins[k3]]]$RV[,3]
         rv.all <- RV.all[[ins[k3]]]
-        rv.sig <-RV.kep[[ins[k3]]]
+        rv.sig <- RV.kep[[ins[k3]]]
         rv.trend <- rv.all-rv.sig
         nqp <- out[[ins[k3]]]$noise$nqp
         if((nqp[2]>0 | nqp[3]>0)){
-            rv.arma <- arma(t=trv,ymodel=rv.all,ydata=rv.data,pars=pars,ind.set=k3,p=nqp[3],q=nqp[2])
+            rv.arma <- arma(t=trv,ymodel=rv.all,ydata=rv.data,pars=pars,ind.set=k3,p=nqp[3],q=nqp[2])$arma
 #            cat('range(rv.arma)=',range(rv.arma),'\n')
             rv.all <- rv.all +rv.arma
         }else{
@@ -751,87 +945,79 @@ tjar <- function(t=trv,x=Sindex[,1],phi.sab,alpha.sab,psi.sab,par.tj=1,symmetry=
     }
     return(rv.tjar)
 }
-prior.func <- function(pars){
+prior.func <- function(pars,bases=rep('natural',10)){
     logprior <- 0
-    Np <- length(grep('per',names(pars)))
+    npar <- names(pars)
+    Np <- length(grep('per',npar))
     if(Np>0){
-        pers  <-  pars[grep('per([[:digit:]]{1})',names(pars))]
-        if(period.par=='logP'){
-            Ps <- exp(pers)
-        }else if(period.par=='P'){
-            Ps <- pers
-        }else if(period.par=='nu'){
-            Ps <- 1/pers
-        }
-        for(j4 in 1:Np){
-            ii <- which(ind.transit==j4)
-            if(length(ii)>0){
-                per.logprior <- dnorm(Ps[j4],mean=Ptransit[ii],sd=ePtransit[ii],log=TRUE)
-                if(per.logprior< -100 & Niter0<1e5) cat('per.logprior=',per.logprior,'\n')
-                logprior <- logprior+per.logprior
-            }
-        }
-        if(basis=='natural'){
-            Ks <-  pars[grep('K([[:digit:]]{1})',names(pars))]
-            omegas <-  pars[grep('omega([[:digit:]]{1})',names(pars))]
-            Omegas <-  pars[grep('Omega([[:digit:]]{1})',names(pars))]
-            Mos <-  pars[grep('Mo([[:digit:]]{1})',names(pars))]
-            if(prior.type!='e0'){
-                es = pars[grep('e([[:digit:]]{1})',names(pars))]
+        for(k in 1:Np){
+            basis <- bases[k]
+            if(basis=='natural'){
+                indP <- grep(paste0('^per',k),names(pars))
+                indK <- grep(paste0('^K',k),names(pars))
+                inde <- grep(paste0('^e',k),names(pars))
+                indMo <- grep(paste0('^Mo',k),names(pars))
+                indomega <- grep(paste0('^omega',k),names(pars))
+                logprior <- logprior + log(1/(par.max[indP]-par.min[indP]))
+                logprior <- logprior + log(1/(par.max[indK]-par.min[indK]))
+                if(length(inde)>0){
+                    e <- pars[inde]
+                    logprior <- logprior + log(2*dnorm(e,mean=0,sd=Esd))#normalized semi-Gaussian distribution
+                }
+                Mo <- pars[indMo]
+                logprior <- logprior + log(1/(par.max[indMo]-par.min[indMo]))
+                if(length(indomega)>0){
+                    logprior <- logprior + log(1/(par.max[indomega]-par.min[indomega]))
+                }
             }else{
-                es <-rep(0,Np)
-            }
-            for(k in 1:Np){
-                if(prior.type=='jeffrey'){
-                    Kprior = (Ks[k]+K0)^-1*(log(1+Kmax/K0*(Pmin/Ps[k])^(1/3)))^-1#according to Table 1 of Ford & Gregory 2007
-                }else{
-                    Kprior = 1/(Kmax-Kmin)
-                }
-                logprior <- logprior+log(Kprior)
-                if(prior.type!='e0' & Esd!=1){
-                    eprior = 2*dnorm(es[k],mean=0,sd=Esd)#normalized semi-Gaussian distribution
-                }else{
-                    eprior = 1
-                }
-                logprior <- logprior+log(eprior)
-                logprior <- logprior+2*log(1/(2*pi))#omega and Omega
-                Mo.prior <- log(1/(2*pi))
-####if type=natural, then there is no prior on Tc
-                if(Ntransit>0 & !is.na(Tc)){
-                    ii <- which(k==ind.transit)
-                    if(length(ii)>0 & FALSE){
-                        Mo0 <- getM0(e=es[k],omega=omegas[k],P=Ps[k],T=Tc[ii],T0=tmin,type='primary')
-                        Mo1 <- getM0(e=es[k],omega=omegas[k],P=Ps[k],T=Tc[ii]-eTc[ii],T0=tmin,type='primary')
-                        Mo2 <- getM0(e=es[k],omega=omegas[k],P=Ps[k],T=Tc[ii]+eTc[ii],T0=tmin,type='primary')
-                        dMo <- abs((Mo2-Mo1)/2)
-                        cat('Mo0',Mo0,'\n')
-                        cat('Mos[k]',Mos[k],'\n')
-                        cat('dMo',dMo,'\n')
-                        Mo.prior <- dnorm(Mos[k],mean=Mo0,sd=dMo,log=TRUE)
-                        cat('Mo.prior=',Mo.prior,'\n')
+                if(basis=='linear2'){
+                    dP  <- pars[grep(paste0('^dP',k),names(pars))]
+                    logprior <- logprior+dnorm(dP,0,ePtransit[k]/alpha.dP,log=TRUE)
+                    dTc  <- pars[grep('^dTc([[:digit:]]{1})',names(pars))]
+                    logprior <- logprior+dnorm(dTc,0,eTc[k]/alpha.dTc,log=TRUE)
+                }else if(basis=='linear1'){
+                    indP <- grep(paste0('^per',k),names(pars))
+                    indTc <- grep(paste0('^Tc',k),names(pars))
+                    if(k<=Ntr){
+                        P  <-  exp(pars[indP])
+                        Tc1  <-  pars[indTc]
+                        logprior <- logprior+ dnorm(P,mean=Ptransit[k],sd=ePtransit[k],log=TRUE)
+                        logprior <- logprior+ dnorm(Tc1,mean=Tc[k],sd=eTc[k],log=TRUE)
+                    }else{
+                        logprior <- logprior+ log(1/(par.max[indP]-par.min[indP]))
+                        logprior <- logprior+ log(1/(par.max[indTc]-par.min[indTc]))
                     }
                 }
-                logprior <- logprior+Mo.prior
-            }
-        }else if(basis=='linear1'){
-            sqresinw <- pars[grep('sqresinw([[:digit:]]{1})',names(pars))]
-            sqrecosw <- pars[grep('sqrecosw([[:digit:]]{1})',names(pars))]
-            Tcs <-  pars[grep('Tc([[:digit:]]{1})',names(pars))]
-###assume uniform prior for eccentricity if basis=linear1
-            if(prior.type!='e0' & Esd!=1 & FALSE){
-                eprior = 2*dnorm(sqresinw^2+sqrecosw^2,mean=0,sd=Esd)#normalized semi-Gaussian distribution
-            }else{
-                eprior = 1
-            }
-            logprior <- logprior+sum(log(eprior))
-            if(!is.na(Tc) & Ntransit>0){
-                ttc <- Tcs[ind.transit[ind.transit!=0]]
-                logprior.Tc <- dnorm(ttc,Tc,eTc,log=TRUE)
-                if(logprior.Tc< -100 & Niter0<1e5)  cat('logprior.Tc=',logprior.Tc,'\n')
-                logprior <- logprior+sum(logprior.Tc)
+                indK <- grep(paste0('^lnK',k),names(pars))
+                indsw  <-  grep(paste0('^sqresinw',k),names(pars))
+                indcw  <-  grep(paste0('^sqrecosw',k),names(pars))
+                logprior <- logprior+ log(1/(par.max[indK]-par.min[indK]))
+###non-uniform prior for linear2 parameterization
+                e <- pars[indsw]^2+pars[indcw]^2
+                logprior <- logprior+ log(2*dnorm(e,mean=0,sd=Esd))
+#                logprior <- logprior+ log(1/(par.max[indsw]-par.min[indsw]))
+#                logprior <- logprior+ log(1/(par.max[indcw]-par.min[indcw]))
             }
         }
     }
+
+#    if(target=='GJ559A'){
+    if(FALSE){
+###try to maintain the same zero-point
+        ii <- sort(tmins,index.return=TRUE)$ix
+        bs <- pars[grep('b\\d',names(pars))]
+        for(j in 1:length(ii)){
+            i <- ins[ii[j]]
+            if(j==1){
+                b0 <- bs[ii[j]]
+            }else{
+                priorb <- dnorm(bs[ii[j]],b0,10,log=TRUE)
+                logprior <- logprior+ priorb
+#                cat('priorb=',priorb,'\n')
+            }
+        }
+    }
+
 ####noise model
     for(i1 in 1:length(ins)){
         nqp <- out[[ins[i1]]]$noise$nqp
@@ -850,9 +1036,9 @@ prior.func <- function(pars){
 }
 
 #posterior distribution
-posterior <- function(param,tem=1){
-    llike <- loglikelihood(param)
-    pr <- prior.func(param)
+posterior <- function(param,tem=1,bases='natural'){
+    llike <- loglikelihood(param,bases=bases)
+    pr <- prior.func(param,bases=bases)
     post <- llike*tem+pr
     return(list(loglike=llike,logprior=pr,post=post))
 }
@@ -861,28 +1047,18 @@ proposalfunction.simple <- function(param,cov.adapt){
     Ntt <- 1e4
     for(k in 1:Ntt){
         cov.all <- cov.adapt
-                                        #        param.new <- try(mvrnorm(n=1,mu=param,Sigma=cov.all,tol=tol1),TRUE)#this could cause some non-zero values for fix value, but it is too small to be accounted for.
+###        param.new <- try(mvrnorm(n=1,mu=param,Sigma=cov.all,tol=tol1),TRUE)#this could cause some non-zero values for fix value, but it is too small to be accounted for.
         param.new <- try(mvrnorm(n=1,mu=param,Sigma=cov.all,tol=tol1),TRUE)
-                                        #        cat('diag(cov.all)=',diag(cov.all),'\n')
-                                        #        param.new <- mvrnorm(n=1,mu=param,Sigma=cov.all,tol=tol1)
+###        cat('diag(cov.all)=',diag(cov.all),'\n')
+###        param.new <- mvrnorm(n=1,mu=param,Sigma=cov.all,tol=tol1)
         if(class(param.new)=='try-error'){
             param.new <- try(mvrnorm(n=1,mu=param,Sigma=nearPD(cov.all)$mat,tol=tol1),TRUE)
         }
         ind1 <- grep('Mo\\d',names(param.new))
         ind2 <- grep('omega\\d',names(param.new))
-        ind3 <- grep('Tc\\d',names(param.new))
+#        ind3 <- grep('Tc\\d',names(param.new)); Tc should not be folded
         if(length(ind1)>0) param.new[ind1] <- param.new[ind1]%%(2*pi)
         if(length(ind2)>0) param.new[ind2] <- param.new[ind2]%%(2*pi)
-####don't mod the transit epoch by period
-        if(length(ind3)>0 & all(is.na(Tc))){
-                                        #cat('param.new[ind3]=',param.new[ind3],'\n')
-            if(prior.type=='e0'){
-                param.new[ind3] <- tmin+(param.new[ind3]-tmin)%%param.new[ind3-2]
-            }else{
-                param.new[ind3] <- tmin+(param.new[ind3]-tmin)%%param.new[ind3-4]
-            }
-            ##cat('2param.new[ind3]=',param.new[ind3],'\n')
-        }
         ind1 <- grep('sqresinw',names(param.new))
         ind2 <- grep('sqrecosw',names(param.new))
         if(length(ind1)>0){
@@ -893,15 +1069,23 @@ proposalfunction.simple <- function(param,cov.adapt){
         }
     }
     if(k==Ntt){
-        cat('k=',k,'\n')
+        cat('\nk=',k,'\n')
         cat('par.max-par.min=',par.max-par.min,'\n')
-        cat('param.new[1]=',param.new[1],'\n')
-        cat('startvalue[1]=',startvalue[1],'\n')
-        cat('par.min[1]=',par.min[1],'\n')
-        cat('par.max[1]=',par.max[1],'\n')
-        cat('name(param>par.max)=',names(param)[which(param.new>par.max)],'\n')
-        cat('name(param<par.min)=',names(param)[which(param.new<par.min)],'\n')
+        ind.big <- which(param.new>par.max)
+        ind.small <- which(param.new<par.min)
+        param.new[c(ind.small,ind.big)] <- (0.5*(par.min+par.max))[c(ind.small,ind.big)]
+        if(length(ind.big)>0){
+            cat('name(param>par.max)=',names(param)[ind.big],'\n')
+            cat('par.max=',par.max[ind.big],'\n')
+            cat('par.min=',par.min[ind.big],'\n')
+            cat('proposed value=',param.new[ind.big],'is larger than max value:',par.max[ind.big],'\n')
+        }
+        if(length(ind.small)>0){
+            cat('name(param<par.min)=',names(param)[ind.small],'\n')
+            cat('proposed value=',param.new[ind.small],'is less than min value:',par.min[ind.small],'\n')
+        }
         break()
+
                                         #        cat('tough var:',names(param.new)[param.new<par.min | param.new>par.max],'\n')
                                         #        cat('diag(cov.all)=',diag(cov.all),'\n')
     }
@@ -914,7 +1098,7 @@ proposalfunction <- function(param,cov.adapt){
     Ntt <- 1e4
     for(k in 1:Ntt){
         cov.all <- cov.adapt
-        param.new <- try(mvrnorm(n=1,mu=param,Sigma=cov.all,tol=1e-10,empirical=FALSE))#this could cause some non-zero values for fix value, but it is too small to be accounted for.
+        param.new <- try(mvrnorm(n=1,mu=param,Sigma=cov.all,tol=tol1,empirical=FALSE))#this could cause some non-zero values for fix value, but it is too small to be accounted for.
      if(class(param.new)=='try-error'){
             param.new <- try(mvrnorm(n=1,mu=param,Sigma=nearPD(cov.all),tol=tol1),TRUE)
         }
@@ -938,6 +1122,7 @@ proposalfunction <- function(param,cov.adapt){
         }
     }
 #    cat('k=',k,'\n')
+#    cat('cov.adapt=',diag(cov.adapt),'\n')
     if(k==Ntt & FALSE){
 	cat('param.new=',param.new,'\n')
 	cat('par.min=',par.min,'\n')
@@ -1004,12 +1189,12 @@ par.sec <- function(par,pars.low,pars.up){
 }
 ####adaptive proposal function
 ###calculate covariance matrix
-covariance.n0 <- function(mat,eps=1e-6){
+covariance.n0 <- function(mat,eps=tol1){
     cov.par <- Sd*cov(mat)+Sd*eps*diag(ncol(mat))
     return(cov.par)
 }
 
-covariance.rep <- function(parms,cov1,mu1,n,Nupdate=1,eps=1e-6){
+covariance.rep <- function(parms,cov1,mu1,n,Nupdate=1,eps=tol1){
     if(n%%Nupdate==0){
         Sd <- 2.4^2/Npar
         mu2 <- (mu1*(n-1)+parms)/n#mu1 and mu2 are the mean vectors of parameters for n-1 and n iterations
@@ -1021,14 +1206,14 @@ covariance.rep <- function(parms,cov1,mu1,n,Nupdate=1,eps=1e-6){
     return(cov2)
 }
 ###run MH algorithm
-run.metropolis.MCMC <- function(startvalue,cov.start,iterations,n0=2,verbose=FALSE,tem=1){
+run.metropolis.MCMC <- function(startvalue,cov.start,iterations,n0=2,verbose=FALSE,tem=1,bases='natural'){
     Npar <- length(startvalue)
     chain  <-  array(dim=c(iterations+1,Npar))
     logpost = loglike = rep(NA,iterations+1)
     colnames(chain) <- names(startvalue)
     chain[1,]<- startvalue
     mu1 <- chain[1,]
-    logpost.out = posterior(chain[1,],tem=tem)
+    logpost.out = posterior(chain[1,],tem=tem,bases=bases)
     logpost[1] <- logpost.pre <- logpost.out$post
     loglike[1] <- loglike.pre <- logpost.out$loglike
     logprior.pre <- logpost.out$logprior
@@ -1044,7 +1229,7 @@ run.metropolis.MCMC <- function(startvalue,cov.start,iterations,n0=2,verbose=FAL
             cov.adapt <- cov.start
         }
         proposal = proposalfunction.simple(chain[i,],cov.adapt)
-        proprop <- posterior(proposal,tem=tem)
+        proprop <- posterior(proposal,tem=tem,bases=bases)
         logpost.prop <- proprop$post
 	logprior.prop <- proprop$logprior
         loglike.prop <- proprop$loglike
@@ -1216,6 +1401,7 @@ Mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
 }
+
 tcol <- function(color, percent = 50, name = NULL) {
     rgb.val <- col2rgb(color)
     t.col <- rgb(rgb.val[1,], rgb.val[2,], rgb.val[3,],
@@ -1224,6 +1410,7 @@ tcol <- function(color, percent = 50, name = NULL) {
                  names = name)
     invisible(t.col)
 }
+
 calTc <- function(Tp,P,e,omega){
     theta <- 0.5*pi-omega
     E <- 2*atan(sqrt((1-e)/(1+e))*tan(theta/2))
@@ -1234,6 +1421,10 @@ calTc <- function(Tp,P,e,omega){
 
 M02Tp <- function(M0,T0,P){
     T0-(M0%%(2*pi))*P/(2*pi)
+}
+
+Tp2M0 <- function(Tp,Tmin,P){
+    ((Tmin-Tp)%%P)/P*2*pi
 }
 
 Tc2M0.circular <- function(Tc,T0,P,omega){
@@ -1268,6 +1459,7 @@ data.distr <- function(x,lp=NULL,xlab,ylab,main='',oneside=FALSE,plotf=TRUE){
     x90per = min(xs[ceiling(length(xs)*0.9)],max(xs))
     xminus.1sig = max(min(xs),xs[floor(length(xs)*0.15865)])
     xplus.1sig = min(xs[ceiling(length(xs)*(1-0.15865))],max(xs))
+    med = median(x)
 #    abline(v=c(x1per,x99per),col='blue')
     if(plotf){
         if(!oneside){
@@ -1278,7 +1470,7 @@ data.distr <- function(x,lp=NULL,xlab,ylab,main='',oneside=FALSE,plotf=TRUE){
             legend('topleft',legend=c(as.expression(bquote('mode ='~.(format(x1,digit=3)))),as.expression(bquote(mu~'='~.(format(x2,digit=3)))),as.expression(bquote(sigma~'='~.(format(x3,digit=3)))),as.expression(bquote(mu^3~'='~.(format(x4,digit=3)))),as.expression(bquote(mu^4~'='~.(format(x5,digit=3))))),bty='n')
         }
     }
-    tmp <- c(xopt=xopt,x1per=x1per,x99per=x99per,x10per=x10per,x90per=x90per,xminus.1sig=xminus.1sig,xplus.1sig=xplus.1sig,mode=x1,mean=x2,sd=x3,skewness=x4,kurtosis=x5)
+    tmp <- c(xopt=xopt,x1per=x1per,x99per=x99per,x10per=x10per,x90per=x90per,xminus.1sig=xminus.1sig,xplus.1sig=xplus.1sig,mode=x1,med=med,mean=x2,sd=x3,skewness=x4,kurtosis=x5)
     return(tmp)
 }
 matrix.distr <- function(y,lp=NULL,xlab,ylab,main='',oneside=FALSE,plotf=TRUE){
@@ -1476,7 +1668,7 @@ AMH3 <- function(nburn,Ns){
                 startvalue <- par.tmp[n,]
             }
 #            indP <- (Np-1)*Nkeppar+1
-#            if(cov.start[indP,indP]<1e-3){
+#            if(cov.start[indP,indP]<tol1){
 #                cov.start[indP,indP] <- startvalue[indP]*1e-3
 #            }
 
@@ -1727,7 +1919,21 @@ period.trans2 <- function(ps,period.type=period.par){
     }
     return(Pers)
 }
-
+K2msini.full <- function(K,P,e,Ms){
+    G <- 4*pi^2*(1.496e11)^3/(365.25*24*3600)^2#m^3*s^-2*Msun^-1
+    Me2s <- 3.003e-6#Earth mass in solar unit
+    Mj2s <- 1/1048
+    Mp0 <- Mp <- K*Ms*(2*pi*G*Ms/(P*24*3600))^(-1/3)*(1-e^2)^0.5#
+    for(j in 1:10){
+        Mp <- K*(Ms+Mp)*(2*pi*G*(Ms+Mp)/(P*24*3600))^(-1/3)*(1-e^2)^0.5#
+        if(all(abs((Mp-Mp0)/Mp0) < 0.001*Mp0)) break()
+        Mp0 <- Mp
+    }
+    Mpj <- Mp/Mj2s
+    Mpe <- Mpj*Mj2s/Me2s
+    ap <- ((P/365.25)^2*Ms)^(1/3)#au
+    return(list(mj=Mpj,me=Mpe,ms=Mpj/1047.348644,a=ap))
+}
 K2msini <- function(K,P,e,Ms){
     G <- 4*pi^2*(1.496e11)^3/(365.25*24*3600)^2#m^3*s^-2*Msun^-1
     Me2s <- 3.003e-6#Earth mass in solar unit
@@ -1825,4 +2031,49 @@ combine.list <- function(sets){
         data <- c(data,sets[[j]])
     }
     return(data)
+}
+
+###optimize angular parameters
+optimize.ang <- function(mcmc){
+    omega = omega1 = omega2 = omega3 = mcmc.out[,grep('omega([[:digit:]]{1})',colnames(mcmc.out))]
+    if(any(grepl('Mo',colnames(mcmc.out)))){
+        Mo = Mo1 = Mo2 = Mo3 = mcmc.out[,grep('Mo([[:digit:]]{1})',colnames(mcmc.out))]
+    }
+    if(Np==1){
+        omega = omega1 = omega2 = omega3 = matrix(omega1)
+        if(any(grepl('Mo',colnames(mcmc.out)))){
+            Mo = Mo1 = Mo2 = Mo3 = matrix(Mo1)
+        }
+    }
+    for(j in 1:Np){
+        ind.o2 <- which(omega1[,j]>pi)
+        ind.o3 <- which(omega1[,j]<pi)
+        omega2[ind.o2,j] <- omega2[ind.o2,j]-2*pi
+        omega3[ind.o3,j] <- omega3[ind.o3,j]+2*pi
+        k <- which.min(c(sd(omega1[,j]),sd(omega2[,j]),sd(omega3[,j])))
+        if(k==1){
+            omega[,j] <- omega1[,j]
+        }else if(k==2){
+            omega[,j] <- omega2[,j]
+        }else{
+            omega[,j] <- omega3[,j]
+        }
+        if(any(grepl('Mo',colnames(mcmc)))){
+            ind.o2 <- which(Mo1[,j]>pi)
+            ind.o3 <- which(Mo1[,j]<pi)
+            Mo2[ind.o2,j] <- Mo2[ind.o2,j]-2*pi
+            Mo3[ind.o3,j] <- Mo3[ind.o3,j]+2*pi
+            k <- which.min(c(sd(Mo1[,j]),sd(Mo2[,j]),sd(Mo3[,j])))
+            if(k==1){
+                Mo[,j] <- Mo1[,j]
+            }else if(k==2){
+                Mo[,j] <- Mo2[,j]
+            }else{
+                Mo[,j] <- Mo3[,j]
+            }
+            mcmc[,grep('Mo([[:digit:]]{1})',colnames(mcmc))] <- Mo
+        }
+    }
+    mcmc[,grep('omega([[:digit:]]{1})',colnames(mcmc.out))] <- omega
+    mcmc
 }

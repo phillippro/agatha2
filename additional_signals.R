@@ -66,7 +66,7 @@ for(jj in 2:Nsig.max){
     cnames <- c(cnames,paste0(per.type.seq,jj,'signal:',ypar,':',name))
     ylabs <- c(ylabs,ylab)
 ###modify the periodogram output for Keplerian fit
-    tmp <- sigfit(per=rv.ls,data=cbind(tab[,1],rr,tab[,3]),SigType=SigType,basis=basis)
+    tmp <- sigfit(per=rv.ls,data=cbind(tab[,1],rr,tab[,3]),SigType=SigType,basis=basis,mcf=mcf)
     rv.ls <- tmp$per
     if(!progress) phase.plot(tmp,fold=fold)
 

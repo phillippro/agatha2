@@ -219,7 +219,7 @@ if(FALSE){
 glst <- function(t, y, err,ofac=1, norm="Cumming",fmax=1,fmin=NA,tspan=NULL,sampling='combined',section=1){
 #    unit <- 365.24#to make the elements of the matrix in the function of 'solve' on the same order
     unit <- 1
-    t <- t-min(t)
+    t <- (t-min(t))/unit
     data <- cbind(t,y,err)
     if(is.null(tspan)){
         tspan <- max(t)-min(t)
@@ -231,7 +231,6 @@ glst <- function(t, y, err,ofac=1, norm="Cumming",fmax=1,fmin=NA,tspan=NULL,samp
 #    f <- seq(fmin,fmax,by=step)*unit
     f <- fsample(fmin,fmax,sampling,section,ofac,unit)
     nout <- length(f)
-    t <- (t-min(t))/unit
     omegas <- 2*pi*f
     dy <- err
     err2 <- err * err
