@@ -17,7 +17,7 @@ basis <- 'natural'
 ##load functions
 source('periodoframe.R')
 source("periodograms.R")
-source('functions.R')
+source('functions.R',local = TRUE)
 source('mcmc_func.R')
 
 data.files <- list.files(path='data',full.name=FALSE)
