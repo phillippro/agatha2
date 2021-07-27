@@ -2269,7 +2269,6 @@ KeplerFit <- function(per,data,basis='natural'){
     }
     ind <- which.max(ll)
     llmax <- ll[ind]
-#    save(list=ls(all=TRUE),file='test0.Robj')
     ParKep <- as.list(pars[ind,])
     DlogLike <-llmax-per$LogLike0
     lnBF3 <- DlogLike-1.5*log(nrow(per$data))

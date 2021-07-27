@@ -6,7 +6,6 @@ library(ramify)
 # options(shiny.maxRequestSize = 9*1024^2)
 options(shiny.maxRequestSize=30*1024^2)
 Nmax.plots <- 50
-renew <- FALSE
 count0 <- 0
 instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
 tol <- 1e-16
@@ -98,22 +97,26 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
 
     output$per.type.seq <- renderUI({
         if(is.null(input$sequence)) return()
-        if(!input$sequence) return()
-        selectInput("per.type.seq",'Periodogram used to find additional signals',choices=input$per.type,selected=NULL,multiple=FALSE)
+        if(input$sequence) selectInput("per.type.seq",'Periodogram used to find additional signals',choices=input$per.type,selected=NULL,multiple=FALSE)
     })
 
     output$sequential <- renderUI({
         if(is.null(Ntarget()) | is.null(input$signal.type)) return()
         if(input$signal.type!='stochastic'){
-            checkboxInput('sequence','Find additional signals sequentially',value=TRUE)
+            checkboxInput('sequence','Find additional signals sequentially',value=FALSE)
+        }
+    })
+
+    output$renew <- renderUI({
+        if(is.null(input$per.type)) return()
+        if(input$per.type=='BFP'){
+            checkboxInput('renew','Whether or not use the optimal parameter of the previous frequency as initial condition',value=FALSE)
         }
     })
 
     output$Nsig.max <- renderUI({
-        if(is.null(Ntarget()) | is.null(input$signal.type)) return()
-        if(input$signal.type!='stochastic'){
-            sliderInput("Nsig.max", "Maximum number of signals", min = 2, max = 10,value=3,step=1)
-        }
+        if(is.null(input$sequence)) return()
+        if(input$sequence) sliderInput("Nsig.max", "Maximum number of signals", min = 2, max = 10,value=2,step=1)
     })
 
     output$nar <- renderUI({
@@ -177,7 +180,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                         choices=c('MLP'),selected="MLP",multiple=TRUE)
         }else{
             selectInput("per.type",'Periodogram type',
-                        choices=c('BFP','MLP','GLST','BGLS','GLS','LS'),selected="GLST",multiple=TRUE)
+                        choices=c('BFP','MLP','GLST','BGLS','GLS','LS'),selected="BFP",multiple=TRUE)
         }
     })
 
@@ -620,7 +623,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
     })
 
   per.par <- reactive({
-      vals <- list(ns=ns(),ofac=input$ofac,frange=1/prange()[2:1],per.type=input$per.type,per.target=input$per.target,SigType=input$signal.type,files=input$files,Niter=input$Niter)
+      vals <- list(ns=ns(),ofac=input$ofac,frange=1/prange()[2:1],per.type=input$per.type,per.target=input$per.target,SigType=input$signal.type,files=input$files,SigType=input$signal.type,sequence=input$sequence)
       if(any(input$per.type=='MLP' | input$per.type=='BFP')){
           Nars <- Nmas <- c()#consider multiple orders
           Inds <- list()
@@ -639,19 +642,28 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
       }else{
           vals <- c(vals,Nmas=0,Nars=0,Inds=0)
       }
-      if(input$sequence){
-          if(input$signal.type=='stochastic'){
-              Nsig.max <- 1
-          }else{
-              Nsig.max <- as.integer(input$Nsig.max)
-          }
-          vals <- c(vals,per.type.seq=input$per.type.seq, Nsig.max=Nsig.max)
+      if(vals$SigType=='stochastic'){
+          vals$Nsig.max <- 1
+	  vals$per.type.seq <- vals$per.type
+      }else if(!vals$sequence){
+          vals$Nsig.max <- 1
+	  vals$per.type.seq <- vals$per.type
+      }else{
+	  vals$Nsig.max <- as.integer(input$Nsig.max)
+	  vals$per.type.seq <- input$per.type.seq
+      }
+      if(input$per.type=='BFP'){
+          vals$Niter <- as.numeric(input$Niter)
+          vals$renew <- as.logical(input$renew)
+      }else{
+          vals$Niter <- 0
+	  vals$renew <- FALSE
       }
       return(vals)
   })
 
   per.par2 <- reactive({
-      vals <- list(ns=ns(),ofac=input$ofac2,frange=1/prange2()[2:1],per.type=input$per.type2,per.target=input$per.target2,files=input$files,Niter=input$Niter)#SigType=input$signal.type
+      vals <- list(ns=ns(),ofac=input$ofac2,frange=1/prange2()[2:1],per.type=input$per.type2,per.target=input$per.target2,files=input$files,Niter=as.numeric(input$Niter))#SigType=input$signal.type
       if(any(input$per.type2=='MLP'|input$per.type2=='BFP')){
           Nmas <- c()
           Nars <- c()
@@ -898,7 +910,7 @@ output$color <- renderUI({
 ###get BFP power spectrum
     data1D <- eventReactive(input$plot1D,{
 ###use calc.1Dper() from functions.R to calculate periodogram
-        calc.1Dper(Nmax.plots, periodogram.var(),per.par(),data(),Niter=input$Niter)
+        calc.1Dper(Nmax.plots, periodogram.var(),per.par(),data())
     })
 
     output$per1D.data <- downloadHandler(

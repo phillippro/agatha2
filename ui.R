@@ -86,6 +86,7 @@ shinyUI(fluidPage(
                          uiOutput('Inds'),
                          uiOutput('signal'),
                          uiOutput('mcf'),
+                         uiOutput('renew'),
                          sliderInput("prange","Period range in base-10 log scale",min = -2,max = 6,value = c(0.1,4),step=0.1),
                          sliderInput("ofac", "Oversampling factor", min = 0, max = 10, value=1,step=0.2),
 #                         radioButtons("signal.type",'Signal type',c("Circular"="circular","Keplerian"='kepler','Stochastic'='stochastic')),

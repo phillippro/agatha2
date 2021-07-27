@@ -77,18 +77,15 @@ addpar <- function(par.old,par.new,nsig){
     return(par)
 }
 
-calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,Niter=1e3,basis='natural'){
-    if(is.null(Niter)) Niter <- 0
-    Niter <- as.numeric(Niter)
+calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
+    var <- names(per.par)
+    for(k in 1:length(var)){
+        assign(var[k],per.par[[var[k]]])
+    }
     if(Niter>0){
         mcf <- TRUE
     }else{
         mcf <- FALSE
-    }
-    cat('Niter=',Niter,'\n')
-    var <- names(per.par)
-    for(k in 1:length(var)){
-        assign(var[k],per.par[[var[k]]])
     }
     if(Ncores>0) {registerDoMC(Ncores)} else {registerDoMC()}
     Nmas <- unlist(Nmas)
@@ -282,22 +279,24 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,Niter=1e3,basis='n
         cnames <- c(cnames,paste0(pers[i],'1signal:',gsub(' .+','',ypar),':',name))
 
 ####calculate the Keplerian fit
-#            save(list=ls(all=TRUE),file='test10.Robj')
-
-        tmp <- sigfit(per=rv.ls,data=tab,SigType=SigType,basis=basis,Ncores=Ncores,mcf=mcf,Niter=Niter)
+	if(Nsig.max>1){
+	     Pconv <- FALSE
+	}else{
+	     Pconv <- TRUE
+	}
+        fit <- sigfit(per=rv.ls,data=tab,SigType=SigType,basis=basis,Ncores=Ncores,mcf=mcf,Niter=Niter,Pconv=Pconv)
 ###update the output from periodogram
-        rv.ls <- tmp$per
+        rv.ls <- fit$per
 
-        pp <- cbind(tmp$t,tmp$y,tmp$ysig0)
+        pp <- cbind(fit$t,fit$y,fit$ysig0)
 
         colnames(pp) <- paste0(c('t','y','ysig'),'_sig1')
         phase.data <- cbind(phase.data,pp)
 
-        qq <- cbind(tmp$tsim,tmp$ysim,tmp$ysim0)
+        qq <- cbind(fit$tsim,fit$ysim,fit$ysim0)
         colnames(qq) <- paste0(c('tsim','ysim','ysim0'),'_sig1')
         sim.data <- cbind(sim.data,qq)
-
-        par.data <- addpar(c(),tmp$ParSig,1)
+        par.data <- addpar(c(),fit$ParSig,1)
 
         if(Nsig.max>1){
             if(per.type==per.type.seq){
@@ -311,21 +310,27 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,Niter=1e3,basis='n
         }
 
 ###use mcmc to update the combined model and output
-        if(mcf  & Nsig.max>1){
-            fit <- mcfit(rv.ls,data=tab[,1:3],tsim=tsim0,Niter=Niter,SigType=SigType,basis=basis,ParSig=par.data,Pconv=TRUE,Ncores=Ncores)
+        save(list=ls(all=TRUE),file='test2.Robj')
+        if(mcf){
+            if(Nsig.max>1){
+                fit <- mcfit(rv.ls,data=tab[,1:3],tsim=fit$tsim0,Niter=Niter,SigType=SigType,basis=basis,ParSig=par.data,Pconv=TRUE,Ncores=Ncores)
+            }
             ParSig <- fit$ParSig
             par.data <- fit$par.stat
 
             pp <- cbind(fit$ysig,fit$ysig0,fit$res)
             colnames(pp) <- paste0(c('y','ysig','res'),'_all')
             phase.data <- cbind(phase.data,pp)
-
-            qq <- cbind(fit$ysim.sig)
+            if(Nsig.max>1){
+                qq <- cbind(fit$ysim.sig)
+            }else{
+                qq <- cbind(fit$ysim0)
+            }
             colnames(qq) <- 'ysim_all'
             sim.data <- cbind(sim.data,qq)
         }else{
-#            save(list=ls(all=TRUE),file='test0.Robj')
-            res <- tmp$res
+#
+            res <- fit$res
             if(Nsig.max>1){
                 ysig0 <- rowSums(phase.data[,paste0('ysig_sig',1:Nsig.max)])
                 ysim <- rowSums(sim.data[,paste0('ysim0_sig',1:Nsig.max)])
@@ -334,8 +339,8 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,Niter=1e3,basis='n
                 ysim <- sim.data[,'ysim0_sig1']
             }
             ysig <- ysig0+res
-            tsim0 <- tmp$tsim0
-            ParSig <- par.data
+            tsim0 <- fit$tsim0
+            ParSig <- fit$ParSig
 
             pp <- cbind(ysig,ysig0,res)
             colnames(pp) <- paste0(c('y','ysig','res'),'_all')
@@ -348,7 +353,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,Niter=1e3,basis='n
 ###attach common data
         phase.attach <- cbind(tab[,1],y,dy)
         colnames(phase.attach) <- c('t0','y0','ey0')
-        sim.attach <- t(t(tmp$tsim0))
+        sim.attach <- t(t(fit$tsim0))
         colnames(sim.attach) <- 'tsim0'
         phase.data <- cbind(phase.data,phase.attach)
         sim.data <- cbind(sim.data,sim.attach)
@@ -666,15 +671,6 @@ mcfit <- function(per,data,tsim,Niter=1e3,SigType='kepler',basis='natural',ParSi
     }
     ysim.sig <- RV.kepler(pars.kep=par.opt0,tt=tsim+tmin,kep.only=TRUE,bases=bases)
 
-if(FALSE){
-    save(list=ls(all=TRUE),file='test7.Robj')
-    cat('popt=',popt,'\n')
-    dev.new()
-    plot((trv-min(trv))%%popt,data[,2])
-    points(tsim%%popt,ysim.sig,col='red')
-    stop()
-}
-
     if(FALSE){
         ysim.proxy <- 0
         if(!all(yproxy==0)){
@@ -684,10 +680,10 @@ if(FALSE){
         ysim.all <- RV.kepler(pars.kep=par.opt0,tt=tsim+tmin,bases=bases)+ysim.red
     }
 
-    list(mc=mc,llmax=llmax,lpmax=lpmax,ParSig=ParSig,out=out,par.stat=par.stat,yma=yma,yar=yar,yred=yred,ysig=ysig,ysig0=as.numeric(ysig0),ysim.red=ysim.red,ysim.sig=ysim.sig,ytrend=ytrend,yproxy=yproxy,res=res,res.sig=res.sig,popt=popt)#ysim.all=ysim.all
+    list(mc=mc,llmax=llmax,lpmax=lpmax,ParSig=ParSig,out=out,par.stat=par.stat,yma=yma,yar=yar,yred=yred,ysig=ysig,ysig0=as.numeric(ysig0),ysim.red=ysim.red,ysim.sig=ysim.sig,ytrend=ytrend,yproxy=yproxy,res=res,res.sig=res.sig,popt=popt,tsim0=tsim)#ysim.all=ysim.all
 }
 
-sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4,Niter=1e3){
+sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4,Niter=1e3,Pconv=FALSE){
 ###This function is to modify the output of various periodograms to give residual, model prediction, and optimal parameters as well as posterior/likelihood samples
     ##x is a list
     ##SigType is either circular or kepler
@@ -696,6 +692,7 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
 #    }
     ParSig <- par.opt <- unlist(per$par.opt)
     par.list <- as.list(per$par.opt)
+    par.stat <- NULL
 
 #    if(any(names(per)=='data')){
 #        data <- per$data
@@ -763,7 +760,8 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
         }else if(SigType=='stochastic'){
 ###Stochastic fitting; type=='noise'
             if(!mcf){
-                per$Popt <- exp(per$par.opt[grep('logtau',per$par.opt)])
+                per$Popt <- exp(per$par.opt[grep('logtau',names(per$par.opt))])
+                popt <- per$Popt[1]
                 df <- per$df
                 fit <- CircularSig(par.list,df)
                 ysig0 <- fit$yred
@@ -777,8 +775,9 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
         }
 #    }
     if(mcf){
-        tmp <- mcfit(per=per,data=data,tsim=tsim,Niter=Niter,SigType=SigType,basis=basis,Pconv=FALSE,Ncores=Ncores)
+        tmp <- mcfit(per=per,data=data,tsim=tsim,Niter=Niter,SigType=SigType,basis=basis,Pconv=Pconv,Ncores=Ncores)
         startvalue <- ParSig <- tmp$ParSig
+	par.stat <- tmp$par.stat
         res <- tmp$res
         if(SigType!='stochastic'){
             ysig0 <- tmp$ysig0
@@ -793,19 +792,13 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
         }
         ysim.all <- tmp$ysim.all
         per$ysims <- per$ysims+ysim.sig
-#        per$res <- data[,2]-ysig0
         per$res <- tmp$res.sig
-        if(FALSE){
-            save(list=ls(all=TRUE),file='test3.Robj')
-            dev.new()
-            plot(t,data[,2])
-            points(t,ysig0,col='red')
-            points(t,per$res,col='blue')
-            break()
-        }
     }
 
 ####output
+    if(is.na(popt) | is.null(popt)){
+        popt <- 1e7
+    }
     tsim1 <- tsim%%popt
     inds <- sort(tsim1,index.return=TRUE)$ix
     tsim2 <- tsim1[inds]
@@ -815,19 +808,7 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
     ts <- t%%popt
     tsims <- tsim2
     ysims <- ysim2
-#    save(list=ls(all=TRUE),file='test3.Robj')
-    if(FALSE){
-#    if(TRUE){
-        dev.new()
-        plot(ts,ysig,main=round(popt,1))
-        lines(tsim2,ysim2,col='red')
-        break()
-    }
-#    ts <- t
-#    tsims <- tsim
-#    ysims <- ysim.sig
-    cat('ParSig=',ParSig,'\n')
-    return(list(per=per,t=ts,y=as.numeric(ysig),ey=data[,3],res=as.numeric(res),ysig0=as.numeric(ysig0),tsim0=tsim0,ysim0=ysim0,tsim=tsims,ysim=ysims,ParSig=ParSig))
+    return(list(per=per,t=ts,y=as.numeric(ysig),ey=data[,3],res=as.numeric(res),ysig0=as.numeric(ysig0),tsim0=tsim0,ysim0=ysim0,tsim=tsims,ysim=ysims,ParSig=ParSig,par.stat=par.stat,popt=popt))
 }
 
 phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repar=TRUE){
@@ -839,7 +820,6 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
             par(mfrow=c(2,2),mar=c(5,5,3,1),cex.lab=1.2,cex.main=0.8,cex.axis=1.2,cex=1)
         }
     }
-#    save(list=ls(all=TRUE),file='test10.Robj')
     ylab <- unlist(strsplit(tits[1],';'))[3]
     if(!is.null(index)){
         inds <- index
@@ -876,7 +856,6 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
     tsim0 <- sim.data[,'tsim0']
     ysim.all <- sim.data[,'ysim_all']
 
-#    save(list=ls(all=TRUE),file='test5.Robj')
     plot(t,y,xlab='BJD [day]',ylab=ylab,main=gsub('\\d signal','combined fit',titles[i]),col='white')
     lines(tsim0+min(t),ysim.all,col='red',lwd=3)
     points(t,y,col='black')
@@ -915,12 +894,12 @@ per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL
         per.type <- gsub('[[:digit:]]signal:.+','',colnames(per.data)[i+1])
         f1 <- gsub('signal:.+','',colnames(per.data)[i+1])
         Nsig <- gsub('[A-Z]','',f1)
-        if(pers=='BGLS'|pers=='MLP'|(pers=='BFP' & SigType!='stochastic')){
-#            ymin <- median(power)
+        if(SigType!='stochastic'){
+            ymin <- median(power)
         }else{
-#            ymin <- max(0,min(power))
+            ymin <- max(0,min(power))
         }
-        ymin <- min(power)
+#        ymin <- min(power)
         if(grepl('Window',titles[i])){
             ylim <- c(ymin,max(power)+0.15*(max(power)-ymin))
         }else{
@@ -947,8 +926,10 @@ per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL
         if(length(pmaxs)>0){
             par(xpd=TRUE)
             offset <- c(0.08*(max(power)-ymin), 0.02*(max(power)-ymin))
-            pmaxs <- pmaxs[1]
-            power.max <- power.max[1]
+#            pmaxs <- pmaxs[1]
+#            power.max <- power.max[1]
+	     pmaxs <- P[which.max(power)]
+	     power.max <- power[which.max(power)]
             text(pmaxs,power.max+offset[1],pos=3,labels=format(pmaxs,digit=4),col='red',cex=1.0)
             try(arrows(pmaxs,power.max+offset[1],pmaxs,power.max+offset[2],col='red',length=0.05),TRUE)
             par(xpd=FALSE)
