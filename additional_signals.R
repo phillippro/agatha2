@@ -4,12 +4,13 @@ leg.pos <- 'topright'
 ############################
 ####find additional signals
 ############################
+#save(list=ls(all=TRUE),file='test3.Robj')
 for(jj in 2:Nsig.max){
     cat('\n Find signal ',jj,'!\n')
     if(any(names(rv.ls)=='res.s')){
-        res <- rv.ls$res.s
+        res <- as.numeric(rv.ls$res.s)
     }else{
-        res <- rv.ls$res
+        res <- as.numeric(rv.ls$res)
     }
     if(is.matrix(res)){
         rr <- res[1,]
@@ -71,7 +72,7 @@ for(jj in 2:Nsig.max){
     cnames <- c(cnames,paste0(per.type.seq,jj,'signal:',ypar,':',name))
     ylabs <- c(ylabs,ylab)
 ###modify the periodogram output for Keplerian fit
-    tmp <- sigfit(per=rv.ls,data=cbind(tab[,1],rr,tab[,3]),SigType=SigType,basis=basis,mcf=mcf)
+    tmp <- sigfit(per=rv.ls,data=cbind(t,rr,dy),SigType=SigType,basis=basis,mcf=mcf)
     rv.ls <- tmp$per
 #    if(!progress) phase.plot(tmp,fold=fold)
 

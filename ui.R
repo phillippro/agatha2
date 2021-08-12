@@ -86,7 +86,6 @@ shinyUI(fluidPage(
                          uiOutput('Inds'),
                          uiOutput('signal'),
                          uiOutput('mcf'),
-                         uiOutput('renew'),
                          sliderInput("prange","Period range in base-10 log scale",min = -2,max = 6,value = c(0.1,4),step=0.1),
                          sliderInput("ofac", "Oversampling factor", min = 0, max = 10, value=1,step=0.1),
 #                         radioButtons("signal.type",'Signal type',c("Circular"="circular","Keplerian"='kepler','Stochastic'='stochastic')),
@@ -107,10 +106,7 @@ shinyUI(fluidPage(
                          uiOutput('download.per1D.plot'),
                          uiOutput('download.phase1D.plot'),
                          helpText("The users are encouraged to make their own periodogram figures and phase plots by downloading and using the relevant data."),
-                         uiOutput('download.per1D.data'),
-                         uiOutput('download.phase1D.data'),
-                         uiOutput('download.sim1D.data'),
-                         uiOutput('download.par1D.data')
+                         uiOutput('download.all.data'),
                      ),
                      mainPanel(
                          uiOutput("plot.1Dcombined"),

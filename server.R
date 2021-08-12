@@ -1,6 +1,8 @@
 library(shiny)
 library(magicaxis)
 library(ramify)
+library(utils)
+options(warn=-2)
 #library(ggplot2)
 # use the below options code if you wish to increase the file input limit, in this example file input limit is increased from 5MB to 9MB
 # options(shiny.maxRequestSize = 9*1024^2)
@@ -11,6 +13,7 @@ instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
 tol <- 1e-16
 progress <- TRUE
 #basis <- 'linear'
+renew <- TRUE
 basis <- 'natural'
 #trend <- FALSE
 ##load functions
@@ -104,13 +107,6 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
         if(is.null(Ntarget()) | is.null(input$signal.type)) return()
         if(input$signal.type!='stochastic'){
             checkboxInput('sequence','Find additional signals sequentially',value=FALSE)
-        }
-    })
-
-    output$renew <- renderUI({
-        if(is.null(input$per.type)) return()
-        if(input$per.type=='BFP'){
-            checkboxInput('renew','Whether or not use the optimal parameter of the previous frequency as initial condition',value=TRUE)
         }
     })
 
@@ -401,7 +397,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
                     write.table(data()[[j]], file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
                 }
             )
-               )
+            )
     })
 
 
@@ -654,10 +650,8 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
       }
       if(input$per.type=='BFP'){
           vals$Niter <- as.numeric(input$Niter)
-          vals$renew <- as.logical(input$renew)
       }else{
           vals$Niter <- 0
-	  vals$renew <- FALSE
       }
       return(vals)
   })
@@ -913,54 +907,104 @@ output$color <- renderUI({
         calc.1Dper(Nmax.plots, periodogram.var(),per.par(),data())
     })
 
-    output$per1D.data <- downloadHandler(
+    save.data <- function(li,f,format='normal'){
+        fs <- c()
+        if(length(li)==1){
+            if(format=='normal'){
+                write.table(li[[1]], file=f,quote=FALSE,row.names=FALSE)
+            }else{
+                tab <- li[[1]]
+                if(is.null(dim(tab))){
+                    write.table(t(tab), f,quote=FALSE,row.names=FALSE)
+                }else{
+                    write.csv2(tab, f,quote=FALSE,row.names=TRUE)
+                }
+            }
+            fs <- c(fs,f)
+        }else{
+            for(j in 1:length(li)){
+                ff <- paste0(names(li)[j],'_',f)
+                if(format=='normal'){
+                    write.table(li[[j]], file=ff,quote=FALSE,row.names=FALSE)
+                }else{
+                    tab <- li[[j]]
+                    if(is.null(dim(tab))){
+                        write.table(t(tab), file=ff,quote=FALSE,row.names=FALSE)
+                    }else{
+                        write.csv2(tab, file=ff,quote=FALSE,row.names=TRUE)
+                    }
+                }
+                fs <- c(fs,ff)
+            }
+        }
+        fs
+    }
+
+    output$all.data <- downloadHandler(
         filename = function() {
-            paste0(data1D()$fname,'_Periodogram.txt')
+            paste0(data1D()$fname,'.zip')
         },
         content = function(file) {
-            tab <- data1D()$per.data
-            write.table(tab, file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
-        }
+        tmpdir <- tempdir()
+        setwd(tempdir())
+        fs <- c()
+        fs <- c(fs,save.data(data1D()$per.list,paste0(data1D()$fname,'_Periodogram.txt')))
+        fs <- c(fs,save.data(data1D()$phase.list,paste0(data1D()$fname,'_PhaseData.txt')))
+        fs <- c(fs,save.data(data1D()$sim.list,paste0(data1D()$fname,'_SimFit.txt')))
+        fs <- c(fs,save.data(data1D()$par.list,paste0(data1D()$fname,'_OptPar.csv'),format='csv'))
+        save(list=ls(all=TRUE),file='test0.Robj')
+        zip(zipfile=file, files=fs)
+      },
+      contentType = "application/zip"
     )
 
     output$phase1D.data <- downloadHandler(
         filename = function() {
-            paste0(data1D()$fname,'_PhaseData.txt')
+            if(length(data1D()$phase.list)>1){
+                paste0(data1D()$fname,'_PhaseData.tar')
+            }else{
+                paste0(data1D()$fname,'_PhaseData.txt')
+            }
         },
         content = function(file) {
-            tab <- data1D()$phase.data
-            write.table(tab, file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
+            save.data(data1D()$phase.list,file)
         }
     )
 
     output$sim1D.data <- downloadHandler(
         filename = function() {
-            paste0(data1D()$fname,'_SimFit.txt')
+            if(length(data1D()$sim.list)>1){
+                paste0(data1D()$fname,'_SimFit.tar')
+            }else{
+                paste0(data1D()$fname,'_SimFit.txt')
+            }
         },
         content = function(file) {
-            tab <- data1D()$sim.data
-            write.table(tab, file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
+            save.data(data1D()$sim.list,file)
         }
     )
 
     output$par1D.data <- downloadHandler(
         filename = function() {
-            paste0(data1D()$fname,'_OptPar.txt')
+            if(length(data1D()$par.list)>1){
+                paste0(data1D()$fname,'_OptPar.tar')
+            }else{
+                paste0(data1D()$fname,'_OptPar.txt')
+            }
         },
         content = function(file) {
-            tab <- data1D()$par.data
-            if(is.null(dim(tab))){
-                write.table(t(tab), file,quote=FALSE,row.names=FALSE)#FALSE,col.names=FALSE
-            }else{
-                write.csv2(tab, file,quote=FALSE,row.names=TRUE)
-            }
+            save.data(data1D()$par.list,file,format='csv')
         }
     )
 
+    output$download.all.data <- renderUI({
+        if(is.null(data1D())) return()
+        downloadButton('all.data', 'Download data behind the figures')
+    })
 
     output$download.per1D.data <- renderUI({
         if(is.null(data1D())) return()
-        downloadButton('per1D.data', 'Download data of periodograms')
+        downloadButton('per1D.data', 'Download data for periodograms')
     })
 
     output$download.phase1D.data <- renderUI({
