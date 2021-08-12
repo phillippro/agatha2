@@ -805,15 +805,10 @@ sopt <- function(omega,phi,Nma,Nar,Indices,data,type='noise',par.low,par.up,star
     res <- as.numeric(y-yp.full)
 ####
     pars <- opt.par
-    if(type=='period'){
-        pars$A <- 0
-        pars$B <- 0
-        yp.noise <- as.numeric(CircularSig(pars,df)$v)
-    }else{
-        yp.noise <- yp.full
-    }
-    res.sig <- as.numeric(y-(yp.full-yp.noise))
-    return(list(df=df,res=res,res.sig=res.sig,noise=yp.noise,logL=logL,lnls=lnls,par=opt.par,par0=opt.par0,par.low=par.low,par.up=par.up))
+    yp.noise <- tmp$ytrend+tmp$yred
+    ysig <- tmp$ysig
+    res.sig <- as.numeric(y-ysig)
+    return(list(df=df,res=res,res.sig=res.sig,noise=yp.noise,logL=logL,lnls=lnls,par=opt.par,par0=opt.par0,par.low=par.low,par.up=par.up,ysig=ysig,yfull=yp.full))
 }
 
 par.integral <- function(data,Indices=NULL,sj,m,d,type='noise',logtau=NULL,omega=NULL,Nma=0, Nar=0){
@@ -1873,6 +1868,12 @@ show.peaks <- function(ps,powers,levels=NULL,Nmax=5){
 }
 BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,tspan=NULL,sampling='combined',model.type='man',progress=TRUE,quantify=FALSE,dP=0.1,section=1,GP=FALSE,gp.par=rep(NA,3),noise.only=FALSE,Nsamp=1,par.opt=NULL,renew=FALSE){
 ###gp.par is the free parameters of SHO-GP
+    if(FALSE){
+        cat('head(t)=',head(t),'\n')
+        cat('head(y)=',head(y),'\n')
+        cat('head(dy)=',head(dy),'\n')
+        cat('Nma=',Nma,';Nar=',Nar,';model.type=man;Indices=',head(Indices), ';ofac=',ofac,';fmin=',fmin,';fmax=',fmax,';quantify=',quantify, ';renew=',renew,';noise.only=',noise.only,'\n')
+    }
 #    if(Nma==0 & Nar==0 & !GP) noise.only <- FALSE
     if(noise.only) quantify <- FALSE
     unit <- 1
@@ -2094,6 +2095,7 @@ BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,ts
     lnbfs <- lnls-lnl0-(Nextra/2*log(Ndata))/Ndata#BIC-estimated BF; the extra free parameter n=2, which are {A, B}
 ####signals
     ind.max <- which.max(logBF)
+    llmax <- max(logLs)
     inds <- sort(logBF,decreasing=TRUE,index.return=TRUE)$ix[1:10]
     Popt <- P[inds[1]]
     Popts <- P[inds]
@@ -2133,7 +2135,7 @@ BFP <- function(t, y, dy, Nma=0, Nar=0,Indices=NULL,ofac=1, fmax=NULL,fmin=NA,ts
     inds <- sort(logBF,decreasing=TRUE,index.return=TRUE)$ix
     ps <- P[inds[1:5]]
     power.opt <- logBF[inds[1:5]]
-    return(list(data=data,logBF=logBF,lnbfs=lnbfs,P=P,Popt=Popt,Popts=Popts,logBF.opt=logBF.opt,par.opt=par.opt,opt.par=opt.par,res.nst=res.nst,res=res.nst,res.n=res.n,res.s=res.s,res.st=res.st,res.nt=res.nt,sig.level=c(-Nextra/2*log(length(y)),0,log(150)), power=logBF,ps=ps,power.opt=power.opt,ysig=ysig,pars=opt.pars,df=df,ParLow=vars1$par.low,ParUp=vars1$par.up,LogLike0=logL0))
+    return(list(data=data,logBF=logBF,llmax=llmax,lnbfs=lnbfs,P=P,Popt=Popt,Popts=Popts,logBF.opt=logBF.opt,par.opt=par.opt,opt.par=opt.par,res.nst=res.nst,res=res.nst,res.n=res.n,res.s=res.s,res.st=res.st,res.nt=res.nt,sig.level=c(-Nextra/2*log(length(y)),0,log(150)), power=logBF,ps=ps,power.opt=power.opt,ysig=ysig,pars=opt.pars,df=df,ParLow=vars1$par.low,ParUp=vars1$par.up,LogLike0=logL0))
 }
 
 LMkepler <- function(ParIni,ParLow,ParUp,df){
@@ -2171,6 +2173,27 @@ scale.proxy <- function(proxy){
     }
     if(is.null(dim(proxy))) proxy <- t(t(proxy))
     return(proxy)
+}
+
+CircularFit <- function(per,data,Nsamp=10){
+    out <- list()
+    llmax <- c()
+    ps <- c()
+    for(j in 1:Nsamp){
+        if(j==1){
+            popt <- per$Popt
+        }else{
+            popt <- rnorm(1,per$Popt,1e-3*per$Popt)
+        }
+        ps <- c(ps,popt)
+        vars <- global.notation(data[,1],data[,2],data[,3],Nma=per$df$Nma,Nar=per$df$Nar,Indices=per$df$Indices,GP=per$df$GP,gp.par=rep(NA,3))
+        tmp <- sopt(omega=2*pi/popt,phi=0,Nma=per$df$Nma,Nar=per$df$Nar,Indices=per$df$Indices,data=data,type='period',par.low=vars$par.low,par.up=vars$par.up,start=vars$start,noise.only=FALSE,GP=FALSE,gp.par=rep(NA,3),Nrep=1)#
+        cat('tmp$logL=',tmp$logL,'\n')
+        llmax <- c(llmax,tmp$logL)
+        out[[j]] <- tmp
+    }
+    ind <- which.max(llmax)
+    c(out[[ind]],list(Popt=ps[ind]))
 }
 
 KeplerFit <- function(per,data,basis='natural'){

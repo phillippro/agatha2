@@ -90,10 +90,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
     if(Ncores>0) {registerDoMC(Ncores)} else {registerDoMC()}
     Nmas <- unlist(Nmas)
     Nars <- unlist(Nars)
-    per.data <- c()
-    phase.data <- c()
-    sim.data <- c()
-    par.data <- c()
+    par.list <- sim.list <- phase.list <- per.list <- tits <- list()
     tits <- c()
     fs <- c()
     pars <- list()
@@ -117,7 +114,6 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
     }
     Nvar <- min(length(pars),Nmax.plots)
     sig.levels <- c()
-    cnames <- c()
     pers <- c()
     ylabs <- c()
     Pmaxs <- c()
@@ -143,12 +139,17 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
             instrument <- per.target
             tab <- data[[per.target]]
         }
+###array to store outputs
+        per.data <- phase.data <- sim.data <- par.data <- c()
+        cnames <- c()
         ypar <- var
+        cat('ypar=',ypar,'\n')
         ypars <- c(ypars,gsub(' ','',ypar))
         Indices <- NA
         if(ncol(tab)>3){
             Indices <- tab[,4:ncol(tab),drop=FALSE]
         }
+        t <- tab[,1]
         if(ypar==ns[1]){
             dy <- tab[,3]
         }else{
@@ -156,6 +157,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
         }
         if(ypar!='Window Function'){
             y <- tab[,ypar]
+            if(ypar!=ns[1]) y <- scale(y)
             if(per.type=='GLST'){
                 rv.ls <- glst(t=tab[,1],y=y,err=dy,ofac=ofac,fmin=frange[1],fmax=frange[2])
                 ylab <- 'Power'
@@ -169,15 +171,17 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
                 ylab <- expression('log(ML/'*ML[max]*')')
                 name <- 'logML'
             }else if(per.type=='BFP'){
-                if(exists('per.type.seq')){
-                    if(per.type.seq=='BFP'){
-                        quantify <- TRUE
-                    }else{
-                        quantify <- FALSE
-                    }
-                }else{
+#                if(exists('per.type.seq')){
+#                    if(per.type.seq=='BFP'){
+#                        quantify <- TRUE
+#                    }else{
+#                        quantify <- FALSE
+#                    }
+#                }else{
+####quantify is not an important parameter, could either be TRUE or FALSE
                     quantify <- FALSE
-                }
+#                    quantify <- TRUE
+#                }
 
 ###preselect Indices according to the value of Inds and Indices
                 if(length(Inds)>0){
@@ -195,8 +199,14 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
                 }
 #                tmp <- c(Nma=Nma,Nar=Nar,model.type='man',Indices=NULL,
 #                                                      ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify)
-                rv.ls <- BFP(t=tab[,1],y=y,dy=dy, Nma=Nma,Nar=Nar,model.type='man',Indices=Indices, ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify, renew=renew,noise.only=noise.only)
-
+                if(FALSE){
+                    cat('renew=',renew,'\n')
+                    cat('t=',head(tab[,1]),'\n')
+                    cat('y=',head(y),'\n')
+                    cat('dy=',head(dy),'\n')
+                    cat('Nma=',Nma,';Nar=',Nar,';model.type=man;Indices=',Indices, ';ofac=',ofac,';fmin=',frange[1],';fmax=',frange[2],';quantify=',quantify, ';renew=',renew,';noise.only=',noise.only,'\n')
+                }
+                rv.ls <- BFP(t=t,y=y,dy=dy, Nma=Nma,Nar=Nar,model.type='man',Indices=Indices, ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify, renew=renew,noise.only=noise.only)
 ###renew: every chi-square minimization start from the initial parameter values
                 ylab <- 'ln(BF)'
                 name <- 'logBF'
@@ -271,11 +281,13 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
         }else{
             sig.levels <- cbind(sig.levels,rv.ls$sig.level)
         }
-        if(i==1) per.data <- cbind(per.data,rv.ls$P)
+#        if(i==1)
+        per.data <- cbind(per.data,rv.ls$P)
         per.data <- cbind(per.data,yy)
         Pmaxs <- c(Pmaxs,format(per.data[which.max(yy),1],digit=2))
         inds <- (ncol(per.data)-1):ncol(per.data)
-        if(i==1)  cnames <- c(cnames,'P')
+#        if(i==1)
+        cnames <- c(cnames,'P')
         cnames <- c(cnames,paste0(pers[i],'1signal:',gsub(' .+','',ypar),':',name))
 
 ####calculate the Keplerian fit
@@ -310,7 +322,6 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
         }
 
 ###use mcmc to update the combined model and output
-        save(list=ls(all=TRUE),file='test2.Robj')
         if(mcf){
             if(Nsig.max>1){
                 fit <- mcfit(rv.ls,data=tab[,1:3],tsim=fit$tsim0,Niter=Niter,SigType=SigType,basis=basis,ParSig=par.data,Pconv=TRUE,Ncores=Ncores)
@@ -350,15 +361,22 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
             colnames(qq) <- 'ysim_all'
             sim.data <- cbind(sim.data,qq)
         }
+
 ###attach common data
-        phase.attach <- cbind(tab[,1],y,dy)
+        phase.attach <- cbind(t,y,dy)
         colnames(phase.attach) <- c('t0','y0','ey0')
         sim.attach <- t(t(fit$tsim0))
         colnames(sim.attach) <- 'tsim0'
         phase.data <- cbind(phase.data,phase.attach)
         sim.data <- cbind(sim.data,sim.attach)
+        colnames(per.data) <- cnames
+
+###put everything into list
+        sim.list[[ypar]] <- sim.data
+        phase.list[[ypar]] <- phase.data
+        per.list[[ypar]] <- per.data
+        par.list[[ypar]] <- par.data
     }
-    colnames(per.data) <- cnames
     if(!exists('Nsig.max')){
         Nsig.max <- 1
     }
@@ -370,7 +388,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
     }
     fname <- paste0(paste(per.target,collapse='_'),'_',paste(ypars,collapse='.'),'_',paste(per.type,collapse=''),'_MA',paste(Nma,collapse=''),'proxy',paste(Inds,collapse='.'),'_',Nsig.max,'sig_',paste(Pmaxs,collapse='d'),'d')
     fname <- paste0(paste(per.target,collapse='_'),'_',paste(ypars,collapse='.'),'_',paste(per.type,collapse=''),'_AR',paste(Nma,collapse=''),'proxy',paste(Inds,collapse='.'),'_',Nsig.max,'sig_',paste(Pmaxs,collapse='d'),'d')
-    return(list(per.data=per.data,phase.data=phase.data,sim.data=sim.data,par.data=par.data,tits=tits,pers=pers,levels=sig.levels,ylabs=ylabs,fname=fname,fs=fs))
+    return(list(per.list=per.list,phase.list=phase.list,sim.list=sim.list,par.list=par.list,tits=tits,pers=pers,levels=sig.levels,ylabs=ylabs,fname=fname,fs=fs))
 }
 
 par.a2m <- function(par,popt,data,SigType='kepler',time.unit=1){
@@ -683,13 +701,14 @@ mcfit <- function(per,data,tsim,Niter=1e3,SigType='kepler',basis='natural',ParSi
     list(mc=mc,llmax=llmax,lpmax=lpmax,ParSig=ParSig,out=out,par.stat=par.stat,yma=yma,yar=yar,yred=yred,ysig=ysig,ysig0=as.numeric(ysig0),ysim.red=ysim.red,ysim.sig=ysim.sig,ytrend=ytrend,yproxy=yproxy,res=res,res.sig=res.sig,popt=popt,tsim0=tsim)#ysim.all=ysim.all
 }
 
-sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4,Niter=1e3,Pconv=FALSE){
+sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4,Niter=1e3,Pconv=FALSE,res.type='sig'){
 ###This function is to modify the output of various periodograms to give residual, model prediction, and optimal parameters as well as posterior/likelihood samples
     ##x is a list
     ##SigType is either circular or kepler
 #    if(any(grepl('gamma',names(per$par.opt)))){
 #        per$par.opt['gamma'] <- data[1,2]
 #    }
+#
     ParSig <- par.opt <- unlist(per$par.opt)
     par.list <- as.list(per$par.opt)
     par.stat <- NULL
@@ -718,19 +737,36 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
                 ysig0 <- par.opt['A']*cos(2*pi/popt*t)+par.opt['B']*sin(2*pi/popt*t)
                 ysig <- per$res+ysig0
                 res <- per$res
-                if(any(names(per)=='df')){
+                if(any(names(per)=='df') & FALSE){
                     df <- per$df
                     if(any(names(df)=='NI') & any(names(df)=='data') & any(names(df)=='Indices')){
                         if(!any(names(df)=='Nma')) df$Nma <- 0
                         if(!any(names(df)=='NI')) df$NI <- 0
                         if(!any(names(df)=='Nar')) df$Nar <- 0
+                        per$df <- df
+                        fit <- CircularFit(per,data)
+                        ParSig <- unlist(fit$par)
+                        per$Popt <- popt <- fit$Popt
+                        ysig <- fit$yfull
+                        ysig0 <- fit$ysig
+                        res <- fit$res
+                        cat('0per$res=',sd(per$res),'m/s\n')
+                        if(res.type=='sig'){
+                            per$res.s <- fit$res.sig
+                        }else{
+                            per$res.s <- res
+                        }
+                        cat('per$res=',sd(per$res),'m/s\n')
+                        cat('res=',sd(res),'m/s\n')
+                        par.list <- as.list(fit$par)
                         sim <- CircularSim(par.list,df,popt,tsim)
                         ysim.sig <- sim$ysig
                         ysim.all <- sim$y
-                        fit <- CircularSig(par.list,df)
-                        ysig <- fit$res+fit$ysig
-                        ysig0 <- fit$ysig
-                        res <- fit$res
+                        cat('popt=',popt,'\n')
+                        cat('names(par.opt)=',names(par.opt),'\n')
+                        cat('par.opt=',par.opt,'\n')
+                        cat('names(ParSig)=',names(ParSig),'\n')
+                        cat('ParSig=',ParSig,'\n')
                     }
                 }
                 ParSig <- c(P=popt,ParSig)
@@ -751,7 +787,11 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
                 ParSig <- unlist(fit$ParKep)#unlist
                 ysig0 <- sig$ysig
                 ysig <- sig$res+ysig0
-                per$res <- per$data[,2]-sig$ysig
+                if(res.type=='sig'){
+                    per$res <- per$data[,2]-sig$ysig
+                }else{
+                    per$res <- sig$res
+                }
                 popt <- fit$ParKep$P1
                 ysim.all <- sim$y
                 ysim.sig <- sim$ysig
@@ -792,7 +832,11 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
         }
         ysim.all <- tmp$ysim.all
         per$ysims <- per$ysims+ysim.sig
-        per$res <- tmp$res.sig
+        if(res.type=='sig'){
+            per$res.s <- tmp$res.sig
+        }else{
+            per$res.s <- tmp$res
+        }
     }
 
 ####output
@@ -811,7 +855,7 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
     return(list(per=per,t=ts,y=as.numeric(ysig),ey=data[,3],res=as.numeric(res),ysig0=as.numeric(ysig0),tsim0=tsim0,ysim0=ysim0,tsim=tsims,ysim=ysims,ParSig=ParSig,par.stat=par.stat,popt=popt))
 }
 
-phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repar=TRUE){
+phase1D.plot <- function(phase.list,sim.list,tits,download=FALSE,index=NULL,repar=TRUE){
     if(repar){
         if(is.null(index)){
             par(mfrow=c(ceiling(Nmax.plots/2),2),mar=c(5,5,3,1),cex.lab=1.5,cex.axis=1.5,cex=1,cex.main=1.0)
@@ -820,119 +864,125 @@ phase1D.plot <- function(phase.data,sim.data,tits,download=FALSE,index=NULL,repa
             par(mfrow=c(2,2),mar=c(5,5,3,1),cex.lab=1.2,cex.main=0.8,cex.axis=1.2,cex=1)
         }
     }
-    ylab <- unlist(strsplit(tits[1],';'))[3]
-    if(!is.null(index)){
-        inds <- index
-        titles <- rep('',inds)
-    }else{
-        inds <- 1:length(grep('y_sig',colnames(phase.data)))
-        titles <- tits
-    }
-    ysig0 <- 0
-    ysim0 <- 0
-    for(i in inds){
-        t <- phase.data[,paste0('t_sig',i)]
-        y <- phase.data[,paste0('y_sig',i)]
-        ey <- phase.data[,'ey0']
+    ypars <- names(phase.list)
+    for(ypar in ypars){
+        if(!is.null(index)){
+            inds <- index
+            titles <- rep('',inds)
+        }else{
+            inds <- 1:length(grep('y_sig',colnames(phase.list[[ypar]])))
+            titles <- tits[grepl(paste0(';',ypar,';'),tits)]
+        }
+        ylab <- unlist(strsplit(titles[1],';'))[3]
+        ysig0 <- 0
+        ysim0 <- 0
+        for(i in inds){
+            t <- phase.list[[ypar]][,paste0('t_sig',i)]
+            y <- phase.list[[ypar]][,paste0('y_sig',i)]
+            ey <- phase.list[[ypar]][,'ey0']
 
-        tsim <- sim.data[,paste0('tsim_sig',i)]
-        ysim <- sim.data[,paste0('ysim_sig',i)]
+            tsim <- sim.list[[ypar]][,paste0('tsim_sig',i)]
+            ysim <- sim.list[[ypar]][,paste0('ysim_sig',i)]
 
-        ysig0 <- ysig0+phase.data[,paste0('ysig_sig',i)]
-        ysim0 <- ysim0+sim.data[,paste0('ysim0_sig',i)]
+            ysig0 <- ysig0+phase.list[[ypar]][,paste0('ysig_sig',i)]
+            ysim0 <- ysim0+sim.list[[ypar]][,paste0('ysim0_sig',i)]
 
-        plot(t,y,xlab='Phase [day]',ylab=ylab,main=titles[i],col='white')
-#    lines(df$tsim,df$ysim,col=tcol('red',50))
-        lines(tsim,ysim,col='red',lwd=3)
-        points(t,y,col='black')
-        arrows(t,y-ey,t,y+ey,length=0.03,angle=90,code=3,col=tcol('black',50))
-    }
+            plot(t,y,xlab='Phase [day]',ylab=ylab,main=titles[i],col='white')
+                                        #    lines(df$tsim,df$ysim,col=tcol('red',50))
+            lines(tsim,ysim,col='red',lwd=3)
+            points(t,y,col='black')
+            arrows(t,y-ey,t,y+ey,length=0.03,angle=90,code=3,col=tcol('black',50))
+        }
 ###total fit
-    t <- phase.data[,'t0']
-    ey <- phase.data[,'ey0']
-    res <- phase.data[,'res_all']
-#    y <- res+ysig0
-    y <- phase.data[,'y_all']
-    tsim0 <- sim.data[,'tsim0']
-    ysim.all <- sim.data[,'ysim_all']
+        t <- phase.list[[ypar]][,'t0']
+        ey <- phase.list[[ypar]][,'ey0']
+        res <- phase.list[[ypar]][,'res_all']
+                                        #    y <- res+ysig0
+        y <- phase.list[[ypar]][,'y_all']
+        tsim0 <- sim.list[[ypar]][,'tsim0']
+        ysim.all <- sim.list[[ypar]][,'ysim_all']
 
-    plot(t,y,xlab='BJD [day]',ylab=ylab,main=gsub('\\d signal','combined fit',titles[i]),col='white')
-    lines(tsim0+min(t),ysim.all,col='red',lwd=3)
-    points(t,y,col='black')
-    try(arrows(t,y-ey,t,y+ey,length=0.03,angle=90,code=3,col=tcol('black',50)),TRUE)
-    legend('topleft',bty='n',legend=paste('RMS =',round(sd(y),1),'\n'),text.col='blue')
+        plot(t,y,xlab='BJD [day]',ylab=ylab,main=gsub('\\d signal','combined fit',titles[i]),col='white')
+        lines(tsim0+min(t),ysim.all,col='red',lwd=3)
+        points(t,y,col='black')
+        try(arrows(t,y-ey,t,y+ey,length=0.03,angle=90,code=3,col=tcol('black',50)),TRUE)
+        legend('topleft',bty='n',legend=paste('RMS =',round(sd(y),1),'\n'),text.col='blue')
 
 ###residual
-    plot(t,res,xlab='BJD [day]',ylab=ylab,main=gsub('\\d signal','residual',titles[i]))
-    try(arrows(t,res-ey,t,res+ey,length=0.03,angle=90,code=3,col=tcol('black',50)),TRUE)
-    legend('topleft',bty='n',legend=paste('RMS =',round(sd(res),1),'\n'),text.col='blue')
+        plot(t,res,xlab='BJD [day]',ylab=ylab,main=gsub('\\d signal','residual',titles[i]))
+        try(arrows(t,res-ey,t,res+ey,length=0.03,angle=90,code=3,col=tcol('black',50)),TRUE)
+        legend('topleft',bty='n',legend=paste('RMS =',round(sd(res),1),'\n'),text.col='blue')
+    }
 }
 
-combined.plot <- function(per.data,phase.data,sim.data,tits,pers,levels,ylabs,SigType='circular',download=FALSE,index=NULL){
-    per1D.plot(per.data,tits,pers,levels,ylabs,download=download,index=index,SigType=SigType)
-    phase1D.plot(phase.data,sim.data,tits=tits,download=download,index=index,repar=FALSE)
+combined.plot <- function(per.list,phase.list,sim.list,tits,pers,levels,ylabs,SigType='circular',download=FALSE,index=NULL){
+    per1D.plot(per.list,tits,pers,levels,ylabs,download=download,index=index,SigType=SigType)
+    phase1D.plot(phase.list,sim.list,tits=tits,download=download,index=index,repar=FALSE)
 }
 
-per1D.plot <- function(per.data,tits,pers,levels,ylabs,download=FALSE,index=NULL,SigType='circular'){
+per1D.plot <- function(per.list,tits,pers,levels,ylabs,download=FALSE,index=NULL,SigType='circular'){
     if(is.null(index)){
         par(mfrow=c(ceiling(Nmax.plots/2),2),mar=c(5,5,3,1),cex.lab=1.5,cex.axis=1.5,cex=1,cex.main=1.0)
     }
     if(download & is.null(index)){
         par(mfrow=c(2,2),mar=c(5,5,3,1),cex.lab=1.2,cex.main=0.8,cex.axis=1.2,cex=1)
     }
-    P <- per.data[,1]
-    if(!is.null(index)){
-        inds <- index
-        titles <- rep('',inds)
-    }else{
-        inds <- 1:(ncol(per.data)-1)
-        titles <- tits
-    }
-    for(i in inds){
-        power <- per.data[,i+1]
-        ylab <- ylabs[i]#gsub('.+:','',colnames(per.data)[i+1])
-        per.type <- gsub('[[:digit:]]signal:.+','',colnames(per.data)[i+1])
-        f1 <- gsub('signal:.+','',colnames(per.data)[i+1])
-        Nsig <- gsub('[A-Z]','',f1)
-        if(SigType!='stochastic'){
-            ymin <- median(power)
+    ypars <- names(per.list)
+    for(ypar in ypars){
+        P <- per.list[[ypar]][,1]
+        if(!is.null(index)){
+            inds <- index
+            titles <- rep('',inds)
         }else{
-            ymin <- max(0,min(power))
+            inds <- 1:(ncol(per.list[[ypar]])-1)
+            titles <- tits[grepl(paste0(';',ypar,';'),tits)]
         }
-#        ymin <- min(power)
-        if(grepl('Window',titles[i])){
-            ylim <- c(ymin,max(power)+0.15*(max(power)-ymin))
-        }else{
-#            ylim <- c(ymin,max(max(power)+0.15*(max(power)-ymin),levels[which(!is.na(levels[,i])),i]))
-            ylim <- c(ymin,max(power)+0.15*(max(power)-ymin))
-        }
-        plot(P,power,xlab='Period [day]',ylab=ylab,xaxt='n',log='x',type='l',main=titles[i], ylim=ylim)
-        magaxis(side=1,tcl=-0.5)
-        if(!grepl('Window',titles[i])){
-            abline(h=levels[,i],lty=2)
-        }
-        p <- show.peaks(ps=P,powers=power,levels=levels[,i])
-        if(!is.matrix(p)){
-            pmaxs <- p[1]
-            power.max <- p[2]
-        }else{
-            pmaxs <- p[,1]
-            power.max <- p[,2]
-            if(length(pmaxs)>4){
-                pmaxs <- p[1:2,1]
-                power.max <- p[1:2,2]
+        for(i in inds){
+            power <- per.list[[ypar]][,i+1]
+            ylab <- ylabs[i]#gsub('.+:','',colnames(per.list)[i+1])
+            per.type <- gsub('[[:digit:]]signal:.+','',colnames(per.list[[ypar]])[i+1])
+            f1 <- gsub('signal:.+','',colnames(per.list[[ypar]])[i+1])
+            Nsig <- gsub('[A-Z]','',f1)
+            if(SigType!='stochastic'){
+                ymin <- median(power)
+            }else{
+                ymin <- max(0,min(power))
             }
-        }
-        if(length(pmaxs)>0){
-            par(xpd=TRUE)
-            offset <- c(0.08*(max(power)-ymin), 0.02*(max(power)-ymin))
-#            pmaxs <- pmaxs[1]
-#            power.max <- power.max[1]
-	     pmaxs <- P[which.max(power)]
-	     power.max <- power[which.max(power)]
-            text(pmaxs,power.max+offset[1],pos=3,labels=format(pmaxs,digit=4),col='red',cex=1.0)
-            try(arrows(pmaxs,power.max+offset[1],pmaxs,power.max+offset[2],col='red',length=0.05),TRUE)
-            par(xpd=FALSE)
+                                        #        ymin <- min(power)
+            if(grepl('Window',titles[i])){
+                ylim <- c(ymin,max(power)+0.15*(max(power)-ymin))
+            }else{
+                                        #            ylim <- c(ymin,max(max(power)+0.15*(max(power)-ymin),levels[which(!is.na(levels[,i])),i]))
+                ylim <- c(ymin,max(power)+0.15*(max(power)-ymin))
+            }
+            plot(P,power,xlab='Period [day]',ylab=ylab,xaxt='n',log='x',type='l',main=titles[i], ylim=ylim)
+            magaxis(side=1,tcl=-0.5)
+            if(!grepl('Window',titles[i])){
+                abline(h=levels[,i],lty=2)
+            }
+            p <- show.peaks(ps=P,powers=power,levels=levels[,i])
+            if(!is.matrix(p)){
+                pmaxs <- p[1]
+                power.max <- p[2]
+            }else{
+                pmaxs <- p[,1]
+                power.max <- p[,2]
+                if(length(pmaxs)>4){
+                    pmaxs <- p[1:2,1]
+                    power.max <- p[1:2,2]
+                }
+            }
+            if(length(pmaxs)>0){
+                par(xpd=TRUE)
+                offset <- c(0.08*(max(power)-ymin), 0.02*(max(power)-ymin))
+                                        #            pmaxs <- pmaxs[1]
+                                        #            power.max <- power.max[1]
+                pmaxs <- P[which.max(power)]
+                power.max <- power[which.max(power)]
+                text(pmaxs,power.max+offset[1],pos=3,labels=format(pmaxs,digit=4),col='red',cex=1.0)
+                try(arrows(pmaxs,power.max+offset[1],pmaxs,power.max+offset[2],col='red',length=0.05),TRUE)
+                par(xpd=FALSE)
+            }
         }
     }
 }

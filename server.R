@@ -110,7 +110,7 @@ The BFP and MLP can be compared with the Lomb-Scargle periodogram (LS), the gene
     output$renew <- renderUI({
         if(is.null(input$per.type)) return()
         if(input$per.type=='BFP'){
-            checkboxInput('renew','Whether or not use the optimal parameter of the previous frequency as initial condition',value=FALSE)
+            checkboxInput('renew','Whether or not use the optimal parameter of the previous frequency as initial condition',value=TRUE)
         }
     })
 
@@ -984,7 +984,7 @@ output$color <- renderUI({
         },
       content = function(file) {
         pdf(file,8,8)
-        per1D.plot(data1D()$per.data,data1D()$tits,data1D()$pers,data1D()$levels,ylabs=data1D()$ylabs,download=TRUE,SigType=input$signal.type)
+        per1D.plot(data1D()$per.list,data1D()$tits,data1D()$pers,data1D()$levels,ylabs=data1D()$ylabs,download=TRUE,SigType=input$signal.type)
         dev.off()
       })
 
@@ -994,7 +994,7 @@ output$color <- renderUI({
         },
       content = function(file){
         pdf(file,8,8)
-        phase1D.plot(data1D()$phase.data,data1D()$sim.data,data1D()$tits,download=TRUE)
+        phase1D.plot(data1D()$phase.list,data1D()$sim.list,data1D()$tits,download=TRUE)
         dev.off()
       })
 
@@ -1043,7 +1043,7 @@ output$color <- renderUI({
 
     output$combined <- renderPlot({
         if(is.null(data1D())) return()
-        combined.plot(data1D()$per.data,data1D()$phase.data,data1D()$sim.data,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs,SigType=input$signal.type)
+        combined.plot(data1D()$per.list,data1D()$phase.list,data1D()$sim.list,data1D()$tits,data1D()$pers,data1D()$levels,data1D()$ylabs,SigType=input$signal.type)
     })
 
     output$plot.1Dcombined <- renderUI({

@@ -5,37 +5,42 @@ leg.pos <- 'topright'
 ####find additional signals
 ############################
 for(jj in 2:Nsig.max){
-    cat('\n Find',jj,'signal!\n')
-    if(is.matrix(rv.ls$res)){
-        rr <- rv.ls$res[1,]
+    cat('\n Find signal ',jj,'!\n')
+    if(any(names(rv.ls)=='res.s')){
+        res <- rv.ls$res.s
     }else{
-        rr <- rv.ls$res
+        res <- rv.ls$res
+    }
+    if(is.matrix(res)){
+        rr <- res[1,]
+    }else{
+        rr <- res
     }
     if(per.type.seq=='BFP'){
-        rv.ls <- BFP(tab[,1],rr,tab[,3],Nma=Nma,Nar=Nar,Indices=Indices,ofac=ofac,model.type='man',fmin=frange[1],fmax=frange[2],quantify=quantify,renew=renew,progress=progress,noise.only=noise.only)
+        rv.ls <- BFP(t,rr,dy,Nma=Nma,Nar=Nar,Indices=Indices,ofac=ofac,model.type='man',fmin=frange[1],fmax=frange[2],quantify=quantify,renew=renew,progress=progress,noise.only=noise.only)
         ylab <- 'ln(BF)'
         name <- 'logBF'
     }
     if(per.type.seq=='MLP'){
-        rv.ls <- MLP(tab[,1],rr,tab[,3],Nma=Nma,Nar=Nar,ofac=ofac,mar.type='part',model.type='man',fmin=frange[1],fmax=frange[2],opt.par=NULL,Indices=Indices,MLP.type=MLP.type,noise.only=noise.only)
+        rv.ls <- MLP(t,rr,dy,Nma=Nma,Nar=Nar,ofac=ofac,mar.type='part',model.type='man',fmin=frange[1],fmax=frange[2],opt.par=NULL,Indices=Indices,MLP.type=MLP.type,noise.only=noise.only)
         ylab <- expression('log(ML/'*ML[max]*')')
         name <- 'logML'
     }
     if(per.type.seq=='GLS'){
-        rv.ls <- gls(tab[,1],rr,tab[,3],ofac=ofac,fmin=frange[1],fmax=frange[2])
+        rv.ls <- gls(t,rr,dy,ofac=ofac,fmin=frange[1],fmax=frange[2])
         name <- ylab <- 'Power'
     }
     if(per.type.seq=='BGLS'){
-        rv.ls <- bgls(tab[,1],rr,tab[,3],ofac=ofac,fmin=frange[1],fmax=frange[2])
+        rv.ls <- bgls(t,rr,dy,ofac=ofac,fmin=frange[1],fmax=frange[2])
         ylab <- expression('log(ML/'*ML[max]*')')
         name <- 'logML'
     }
     if(per.type.seq=='GLST'){
-        rv.ls <- glst(tab[,1],rr,tab[,3],ofac=ofac,fmin=frange[1],fmax=frange[2])
+        rv.ls <- glst(t,rr,dy,ofac=ofac,fmin=frange[1],fmax=frange[2])
         name <- ylab <- 'Power'
     }
     if(per.type.seq=='LS'){
-        rv.ls <- lsp(times=tab[,1]-min(tab[,1]),x=rr,ofac=ofac,from=NULL,to=frange[2],alpha=c(0.1,0.01,0.001))
+        rv.ls <- lsp(times=t,x=rr,ofac=ofac,from=NULL,to=frange[2],alpha=c(0.1,0.01,0.001))
         name <- ylab <- 'Power'
     }
     ylim <- c(min(rv.ls$power),max(rv.ls$power)+0.15*(max(rv.ls$power)-min(rv.ls$power)))

@@ -24,17 +24,17 @@ Indices <- scale.proxy(tab[,6,drop=FALSE])
 Ncores <- 4
 Niter <- 1e3
 if(Ncores>0) {registerDoMC(Ncores)} else {registerDoMC()}
-Nar <- 1
-Nma <- 0
-ofac <- 0.1
-mcf <- TRUE
-#mcf <- FALSE
+Nar <- 0
+Nma <- 1
+ofac <- 1
+#mcf <- TRUE
+mcf <- FALSE
 per.type <- per.type.seq <- 'BFP'
 #basis <- 'linear'
 basis <- 'natural'
 #SigType <- 'kepler'
-#SigType <- 'circular'
-SigType <- 'stochastic'
+SigType <- 'circular'
+#SigType <- 'stochastic'
 if(per.type!='BFP' & SigType=='stochastic'){
     SigType <- 'circular'
 }
@@ -50,7 +50,8 @@ if(SigType=='stochastic'){
 if(per.type!='BFP' & per.type!='MLP'){
     Nma <- Nar <- 0
 }
-renew <- FALSE
+#renew <- FALSE
+renew <- TRUE
 progress <- FALSE
 quantify <- FALSE
 #noise.only <- FALSE
@@ -79,6 +80,11 @@ if(per.type=='MLP') rv.ls <- MLP(t=tab[,1],y=tab[,2],dy=tab[,3],Nma=Nma,Nar=Nar,
 if(per.type=='BGLS') rv.ls <- bgls(tab[,1],tab[,2],tab[,3],ofac=ofac,fmin=frange[1],fmax=frange[2])
 if(per.type=='BFP'){
    rv.ls <- BFP(t=tab[,1],y=tab[,2],dy=tab[,3], Nma=Nma,Nar=Nar,model.type='man',Indices=Indices,ofac=ofac,fmin=frange[1],fmax=frange[2],quantify=quantify, renew=renew,progress=progress,noise.only=noise.only)
+   if(FALSE){
+   dev.new()
+   plot(rv.ls$P,rv.ls$power,log='x',type='l')
+   stop()
+   }
 }
 if(per.type=='GLS') rv.ls <- gls(t=tab[,1],y=tab[,2],err=tab[,3],ofac=ofac,fmin=frange[1],fmax=frange[2])
 if(per.type=='GLST') rv.ls <- glst(t=tab[,1],y=tab[,2],err=tab[,3],ofac=ofac,fmin=frange[1],fmax=frange[2])
@@ -86,6 +92,7 @@ if(per.type=='LS') rv.ls <- lsp(times=tab[,1],x=tab[,2],ofac=ofac,from=frange[1]
 
 #if(SigType!='stochastic'){
 tmp <- sigfit(per=rv.ls,data=tab,SigType=SigType,basis=basis,mcf=mcf,Niter=Niter)
+#stop()
 rv.ls <- tmp$per
 ParSig <- par.data <- addpar(c(),tmp$ParSig,1)
 #stop()
@@ -113,7 +120,7 @@ cat('sd(rv.ls$res)=',sd(rv.ls$res),'\n')
 #cat('head(rv.ls$res)=',head(rv.ls$res),'\n')
 
 ##more signals
-Nsig.max <- 3
+Nsig.max <- 2
 if(SigType=='stochastic') Nsig.max <- 1
 MLP.type <- 'sub'
 per.data <- c()
@@ -134,7 +141,9 @@ xlabs <- xlab <- 'x'
 #source('additional_signals.R',local=TRUE)
 if(SigType!='stochastic' & Nsig.max>1){
     source('additional_signals.R')
+    plot(rv.ls$P,rv.ls$power,log='x',type='l',main='signal 2')
 }
+
 res <- tmp$res
 if(Nsig.max>1){
     ysig0 <- rowSums(phase.data[,paste0('ysig_sig',1:Nsig.max)])

@@ -88,7 +88,7 @@ shinyUI(fluidPage(
                          uiOutput('mcf'),
                          uiOutput('renew'),
                          sliderInput("prange","Period range in base-10 log scale",min = -2,max = 6,value = c(0.1,4),step=0.1),
-                         sliderInput("ofac", "Oversampling factor", min = 0, max = 10, value=1,step=0.2),
+                         sliderInput("ofac", "Oversampling factor", min = 0, max = 10, value=1,step=0.1),
 #                         radioButtons("signal.type",'Signal type',c("Circular"="circular","Keplerian"='kepler','Stochastic'='stochastic')),
                                         # "Empty inputs" - they will be updated after the data is uploaded
                          helpText("If the BFP is selected, only 'RV' is available for the following observable selection."),
