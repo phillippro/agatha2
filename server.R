@@ -1029,6 +1029,7 @@ output$color <- renderUI({
       content = function(file) {
         pdf(file,8,8)
         per1D.plot(data1D()$per.list,data1D()$tits,data1D()$pers,data1D()$levels,ylabs=data1D()$ylabs,download=TRUE,SigType=input$signal.type)
+        phase1D.plot(data1D()$phase.list,data1D()$sim.list,data1D()$tits,download=TRUE,repar=FALSE)
         dev.off()
       })
 
@@ -1067,11 +1068,12 @@ output$color <- renderUI({
 
     output$download.per1D.plot <- renderUI({
         if(is.null(data1D())) return()
-        if(input$down.type=='all'){
-            downloadButton('per1D.figure', 'Download periodograms')
-        }else{
-            downloadButton('per1D.single', 'Download periodograms')
-        }
+        downloadButton('per1D.figure', 'Download figures')
+#        if(input$down.type=='all'){
+#            downloadButton('per1D.figure', 'Download periodograms')
+#        }else{
+#            downloadButton('per1D.single', 'Download periodograms')
+#        }
     })
 
 
