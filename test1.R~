@@ -1,6 +1,0 @@
-source('mcmc_func.R')
-source('functions.R')
-source('periodograms.R')
-source('periodoframe.R')
-load('test.Robj')
-p <- KeplerFit(per,data,basis='natural')
