@@ -145,7 +145,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
         ypar <- var
         cat('ypar=',ypar,'\n')
         ypars <- c(ypars,gsub(' ','',ypar))
-        Indices <- NA
+        Indices <- NULL
         if(ncol(tab)>3){
             Indices <- tab[,4:ncol(tab),drop=FALSE]
         }

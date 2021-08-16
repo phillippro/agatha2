@@ -12,24 +12,25 @@ instruments <- c('HARPS','SOHPIE','HARPN','AAT','KECK','APF','PFS')
 tol <- 1e-16
 #trend <- FALSE
 data.files <- list.files(path='data',full.name=FALSE)
-fin <- 'ChallengeDataSet1_HARPS.dat'
+#fin <- 'ChallengeDataSet1_HARPS.dat'
+fin <- 'GJ667C_HARPS.dat'
 tab <- read.table(paste0('data/',fin),header=TRUE)
 frange <- 1/10^c(4,0.1)
 var <- list()
 var$files <- fin
 #rv.ls <- glst(t=tab[,1],y=tab[,2],err=tab[,3],ofac=1,fmin=frange[1],fmax=frange[2])
 #Indices <- scale.proxy(tab[,4:ncol(tab),drop=FALSE])
-Indices <- scale.proxy(tab[,6,drop=FALSE])
-#Indices <- NULL
+#Indices <- scale.proxy(tab[,6,drop=FALSE])
+Indices <- NULL
 Ncores <- 4
 Niter <- 1e3
 if(Ncores>0) {registerDoMC(Ncores)} else {registerDoMC()}
 Nar <- 0
-Nma <- 1
+Nma <- 0
 ofac <- 1
 #mcf <- TRUE
 mcf <- FALSE
-per.type <- per.type.seq <- 'BFP'
+per.type <- per.type.seq <- 'MLP'
 #basis <- 'linear'
 basis <- 'natural'
 #SigType <- 'kepler'
@@ -139,6 +140,8 @@ ylabs <- 'y'
 ylab <- 'y'
 xlabs <- xlab <- 'x'
 #source('additional_signals.R',local=TRUE)
+t <- tab[,1]
+dy <- tab[,3]
 if(SigType!='stochastic' & Nsig.max>1){
     source('additional_signals.R')
     plot(rv.ls$P,rv.ls$power,log='x',type='l',main='signal 2')
