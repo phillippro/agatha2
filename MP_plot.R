@@ -84,6 +84,11 @@ ind.show <- which.min(sigs)
 for(j in 1:2){
     if(j==1){
         par(mar = c(1, s, 0, 0))
+        index <- which(diff(log10(yy))<=0)
+        if(length(index)>0){
+            yy <- yy[-index]
+            zz <- zz[-index,]
+        }
         image(xx,log10(yy),t(zz),xlab='',ylab='Period [day]',axes=FALSE,col=cols,xlim=xlim,zlim=zlim)
         at.labels <- axis(side=1,xpd=TRUE)
         magaxis(side=2,unlog=TRUE,tcl=-0.5)
@@ -91,7 +96,7 @@ for(j in 1:2){
 #        ticks <- ceiling(log10(min(yy)))+(0:Ntick)*round(log10(max(yy))-log(min(yy)))/Ntick
 #        p <- try(axis(side=2,at=ticks,labels=10^ticks),TRUE)
 #        magaxis(side=2,unlog=TRUE)
-#        if(class(p)=='try-error') 
+#        if(class(p)=='try-error')
         mtext(text='Time [JD-2400000]',side=1,outer=TRUE,line=2.2,cex=0.9*size)
 #        mtext(at=c(min(t)-(max(t)-min(t))/10,0.5*(log10(max(yy))-log10(min(yy)))),text='Period [day]',side=2,outer=TRUE,line=2.2,cex=0.9*size)
     }else{

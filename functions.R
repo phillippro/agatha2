@@ -994,15 +994,16 @@ per2D.data <- function(vars,per.par,data){
         assign(var[k],per.par[[var[k]]])
     }
     Nmas <- unlist(Nmas)
+    Nars <- unlist(Nars)
     pars <- list()
     kk <- 1
     for(j1 in 1:length(vars)){
         for(j2 in 1:length(per.type)){
             if(per.type[j2]=='MLP' | per.type[j2]=='BFP'){
-                pars[[kk]] <- list(var=vars[j1],per.type=per.type[j2],Inds=Inds[[1]],Nma=Nmas[1])
+                pars[[kk]] <- list(var=vars[j1],per.type=per.type[j2],Inds=Inds[[1]],Nma=Nmas[1],Nar=Nars[1])
                 kk <- kk+1
             }else{
-                pars[[kk]] <- list(var=vars[j1],per.type=per.type[j2],Inds=0,Nma=0)
+                pars[[kk]] <- list(var=vars[j1],per.type=per.type[j2],Inds=0,Nma=0,Nar=0)
                 kk <- kk+1
             }
         }
@@ -1010,9 +1011,10 @@ per2D.data <- function(vars,per.par,data){
     i <- 1
     if(length(per.target)==1){
         Nma <- as.integer(pars[[i]]$Nma)
+        Nar <- as.integer(pars[[i]]$Nar)
         Inds <- as.integer(pars[[i]]$Inds)
     }
-    Indices <- NA
+    Indices <- NULL
     per.type <- pars[[i]]$per.type
     var <- pars[[i]]$var
     if(length(per.target)>1){
@@ -1029,14 +1031,27 @@ per2D.data <- function(vars,per.par,data){
             Indices <- as.matrix(tab[,4:ncol(tab),drop=FALSE])
         }
     }
+    if(length(Inds)>0){
+        if(all(Inds==0)){
+            Indices <- NULL
+        }else{
+            Inds <- Inds[Inds>0]
+            Indices <- as.matrix(Indices[,Inds,drop=FALSE])
+            for(j in 1:ncol(Indices)){
+                Indices[,j] <- scale(Indices[,j])
+            }
+        }
+    }else{
+        Indices <- NULL
+    }
     ypar <- var
     t <- tab[,1]%%2400000#min(tab[,1])
-    y <- tab[,yvar]
+    y <- tab[,ypar]
     dy <- tab[,3]
     if(length(per.target)==1){
-        mp <- MP(t=t,y=y,dy=dy,Dt=Dt,nbin=Nbin,ofac=ofac,fmin=frange[1],fmax=frange[2],per.type=per.type,sj=0,Nma=Nma,Inds=Inds,Indices=Indices)
+        mp <- MP(t=t,y=y,dy=dy,Dt=Dt,nbin=Nbin,ofac=ofac,fmin=frange[1],fmax=frange[2],per.type=per.type,sj=0,Nma=Nma,Nar=Nar,Indices=Indices)
     }else{
-        mp <- MP(t=t,y=y,dy=dy,Dt=Dt,nbin=Nbin,ofac=ofac,fmin=frange[1],fmax=frange[2],per.type=per.type,sj=0,Nma=0,Inds=0,Indices=Indices)
+        mp <- MP(t=t,y=y,dy=dy,Dt=Dt,nbin=Nbin,ofac=ofac,fmin=frange[1],fmax=frange[2],per.type=per.type,sj=0,Nma=0,Nar=Nar,Indices=Indices)
     }
     x2 <- mp$tmid
     y2 <- mp$P
@@ -1067,6 +1082,7 @@ plotMP <- function(vals,pars){
     yy <- vals$yy
     zz <- vals$zz
     zz.rel <- vals$zz.rel
+    save(list=ls(all=TRUE),file='test3.Robj')
     source('MP_plot.R',local=TRUE)
 }
 
