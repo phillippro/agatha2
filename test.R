@@ -28,8 +28,8 @@ if(Ncores>0) {registerDoMC(Ncores)} else {registerDoMC()}
 Nar <- 0
 Nma <- 0
 ofac <- 1
-#mcf <- TRUE
-mcf <- FALSE
+mcf <- TRUE
+#mcf <- FALSE
 per.type <- per.type.seq <- 'MLP'
 #basis <- 'linear'
 basis <- 'natural'

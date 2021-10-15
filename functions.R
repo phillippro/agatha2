@@ -591,8 +591,9 @@ mcfit <- function(per,data,tsim,Niter=1e3,SigType='kepler',basis='natural',ParSi
     Niter0 <- Niter
     per.prim <- c()
     mcmc <- foreach(ncore=1:Ncores,.errorhandling = 'pass') %dopar% {
-        if(FALSE){
-#        if(TRUE){
+#        if(FALSE){
+        if(TRUE){
+            cat('use hot_chain.R\n')
             source('hot_chain.R',local=TRUE)
             startvalue <- par.hot
         }
