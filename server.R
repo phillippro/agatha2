@@ -934,7 +934,7 @@ output$color <- renderUI({
                 if(is.null(dim(tab))){
                     write.table(t(tab), f,quote=FALSE,row.names=FALSE)
                 }else{
-                    write.csv2(tab, f,quote=FALSE,row.names=TRUE)
+                    write.csv(tab, f,quote=FALSE,row.names=TRUE)
                 }
             }
             fs <- c(fs,f)
@@ -948,7 +948,7 @@ output$color <- renderUI({
                     if(is.null(dim(tab))){
                         write.table(t(tab), file=ff,quote=FALSE,row.names=FALSE)
                     }else{
-                        write.csv2(tab, file=ff,quote=FALSE,row.names=TRUE)
+                        write.csv(tab, file=ff,quote=FALSE,row.names=TRUE)
                     }
                 }
                 fs <- c(fs,ff)

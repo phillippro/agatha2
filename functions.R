@@ -645,6 +645,7 @@ mcfit <- function(per,data,tsim,Niter=1e3,SigType='kepler',basis='natural',ParSi
     n <- colnames(mc)[1:Npar]
     if(length(mc1)>0) n <- c(n,colnames(mc1))
     colnames(par.stat) <- n
+#    save(list=ls(all=TRUE),file='test0.Robj')
 
 ####model prediction
 #    rv <- RVsig(ParSig,out=out)
@@ -1083,7 +1084,7 @@ plotMP <- function(vals,pars){
     yy <- vals$yy
     zz <- vals$zz
     zz.rel <- vals$zz.rel
-    save(list=ls(all=TRUE),file='test3.Robj')
+#    save(list=ls(all=TRUE),file='test3.Robj')
     source('MP_plot.R',local=TRUE)
 }
 

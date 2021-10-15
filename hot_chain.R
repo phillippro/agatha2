@@ -1,5 +1,5 @@
 tem.up <- 15
-ind <- which(!is.na(tab[,3] & !is.na(tab[,3] & tab[,3]!=0)))
+ind <- which(!is.na(data[,3] & !is.na(data[,3] & data[,3]!=0)))
 if(Niter<1e5){
     tem.low <- 1e-3
 }else{
@@ -10,7 +10,7 @@ tmp <- run.metropolis.MCMC(startvalue,cov.start,iterations=1e3,tem=tem,bases=bas
 acceptance <-  (1-mean(duplicated(tmp$out)))*100
 if(acceptance<50) tem.low <- 1e-3*tem.low
 
-tem.min <- min(tem.low,10^floor(log10(min(tab[ind,3]/sd(tab[ind,2])))))
+tem.min <- min(tem.low,10^floor(log10(min(data[ind,3]/sd(data[ind,2])))))
 verbose <- FALSE
 #####Find the optimal tempering parameter: tem
 Ntem <- round(log(1/tem.min)/log(2))#tem.min*2^n=tem; tem<=1

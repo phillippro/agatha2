@@ -30,7 +30,8 @@ Nma <- 0
 ofac <- 1
 mcf <- TRUE
 #mcf <- FALSE
-per.type <- per.type.seq <- 'MLP'
+#per.type <- per.type.seq <- 'MLP'
+per.type <- per.type.seq <- 'BFP'
 #basis <- 'linear'
 basis <- 'natural'
 #SigType <- 'kepler'
