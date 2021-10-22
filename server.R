@@ -967,9 +967,10 @@ output$color <- renderUI({
         fs <- c()
         fs <- c(fs,save.data(data1D()$per.list,paste0(data1D()$fname,'_Periodogram.txt')))
         fs <- c(fs,save.data(data1D()$phase.list,paste0(data1D()$fname,'_PhaseData.txt')))
+        fs <- c(fs,save.data(data1D()$mc.list,paste0(data1D()$fname,'_MCposterior.txt')))
         fs <- c(fs,save.data(data1D()$sim.list,paste0(data1D()$fname,'_SimFit.txt')))
         fs <- c(fs,save.data(data1D()$par.list,paste0(data1D()$fname,'_OptPar.csv'),format='csv'))
-        save(list=ls(all=TRUE),file='test0.Robj')
+#        save(list=ls(all=TRUE),file='test0.Robj')
         zip(zipfile=file, files=fs)
       },
       contentType = "application/zip"

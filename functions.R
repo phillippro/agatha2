@@ -90,7 +90,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
     if(Ncores>0) {registerDoMC(Ncores)} else {registerDoMC()}
     Nmas <- unlist(Nmas)
     Nars <- unlist(Nars)
-    par.list <- sim.list <- phase.list <- per.list <- tits <- list()
+    par.list <- sim.list <- phase.list <- per.list <- tits <- mc.list <- list()
     tits <- c()
     fs <- c()
     pars <- list()
@@ -322,10 +322,12 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
         }
 
 ###use mcmc to update the combined model and output
+        mc <- list()
         if(mcf){
             if(Nsig.max>1){
                 fit <- mcfit(rv.ls,data=tab[,1:3],tsim=fit$tsim0,Niter=Niter,SigType=SigType,basis=basis,ParSig=par.data,Pconv=TRUE,Ncores=Ncores)
             }
+            mc <- fit$mc
             ParSig <- fit$ParSig
             par.data <- fit$par.stat
 
@@ -340,7 +342,6 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
             colnames(qq) <- 'ysim_all'
             sim.data <- cbind(sim.data,qq)
         }else{
-#
             res <- fit$res
             if(Nsig.max>1){
                 ysig0 <- rowSums(phase.data[,paste0('ysig_sig',1:Nsig.max)])
@@ -376,6 +377,7 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
         phase.list[[ypar]] <- phase.data
         per.list[[ypar]] <- per.data
         par.list[[ypar]] <- par.data
+        mc.list[[ypar]] <- mc
     }
     if(!exists('Nsig.max')){
         Nsig.max <- 1
@@ -389,7 +391,8 @@ calc.1Dper <- function(Nmax.plots, vars,per.par,data,Ncores=4,basis='natural'){
     fname <- paste0(paste(per.target,collapse='_'),'_',paste(ypars,collapse='.'),'_',paste(per.type,collapse=''),'_MA',paste(Nma,collapse=''),'proxy',paste(Inds,collapse='.'),'_',Nsig.max,'sig_',paste(Pmaxs,collapse='d'),'d')
     fname <- paste0(paste(per.target,collapse='_'),'_',paste(ypars,collapse='.'),'_',paste(per.type,collapse=''),'_AR',paste(Nma,collapse=''),'proxy',paste(Inds,collapse='.'),'_',Nsig.max,'sig_',paste(Pmaxs,collapse='d'),'d')
 #    cat('fname=',fname,'\n')
-    return(list(per.list=per.list,phase.list=phase.list,sim.list=sim.list,par.list=par.list,tits=tits,pers=pers,levels=sig.levels,ylabs=ylabs,fname=fname,fs=fs))
+#    save(list=ls(all=TRUE),file='test1.Robj')
+    return(list(per.list=per.list,mc=mc,phase.list=phase.list,sim.list=sim.list,par.list=par.list,tits=tits,pers=pers,levels=sig.levels,ylabs=ylabs,fname=fname,fs=fs,mc.list=mc.list))
 }
 
 par.a2m <- function(par,popt,data,SigType='kepler',time.unit=1){
@@ -715,6 +718,7 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
     ParSig <- par.opt <- unlist(per$par.opt)
     par.list <- as.list(per$par.opt)
     par.stat <- NULL
+    mc <- c()
 
 #    if(any(names(per)=='data')){
 #        data <- per$data
@@ -820,6 +824,7 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
     if(mcf){
         tmp <- mcfit(per=per,data=data,tsim=tsim,Niter=Niter,SigType=SigType,basis=basis,Pconv=Pconv,Ncores=Ncores)
         startvalue <- ParSig <- tmp$ParSig
+        mc <- tmp$mc
 	par.stat <- tmp$par.stat
         res <- tmp$res
         if(SigType!='stochastic'){
@@ -855,7 +860,7 @@ sigfit <- function(per,data,SigType='circular',basis='natural',mcf=TRUE,Ncores=4
     ts <- t%%popt
     tsims <- tsim2
     ysims <- ysim2
-    return(list(per=per,t=ts,y=as.numeric(ysig),ey=data[,3],res=as.numeric(res),ysig0=as.numeric(ysig0),tsim0=tsim0,ysim0=ysim0,tsim=tsims,ysim=ysims,ParSig=ParSig,par.stat=par.stat,popt=popt))
+    return(list(per=per,t=ts,y=as.numeric(ysig),ey=data[,3],res=as.numeric(res),ysig0=as.numeric(ysig0),tsim0=tsim0,ysim0=ysim0,tsim=tsims,ysim=ysims,ParSig=ParSig,par.stat=par.stat,popt=popt,mc=mc))
 }
 
 phase1D.plot <- function(phase.list,sim.list,tits,download=FALSE,index=NULL,repar=TRUE){
